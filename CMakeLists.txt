@@ -65,12 +65,19 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/fmt)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/cityhash102)
 include_directories(contrib/cityhash102/include)
 
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/replxx)
+# include_directories(contrib/replxx)
+# link_directories(${CMAKE_BINARY_DIR}/contrib/replxx)
+# link_directories(${CMAKE_CURRENT_BINARY_DIR}/contrib/replxx)
+
+
+
 include_directories(contrib/poco/Net/include)
 include_directories(contrib/poco/Foundation/include)
 include_directories(contrib/poco/Util/include)
 
 
-# set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Release)
 
 
 SET (CMAKE_CXX_STANDARD 17)
@@ -106,11 +113,12 @@ add_library(cfs
   ${CFS_SRCS}
 )
 target_link_libraries(cfs
-#   PUBLIC
+  PUBLIC
   PocoNet
   PocoFoundation
   PocoUtil
   fmt
+  replxx
 )
 
 add_executable(clickhouse
