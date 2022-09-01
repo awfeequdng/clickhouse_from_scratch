@@ -19,6 +19,12 @@
 #include "Common/Exception.h"
 
 
+#if defined(OS_LINUX)
+#    include <sys/mman.h>
+#    include <Common/hasLinuxCapability.h>
+#    include <unistd.h>
+#endif
+
 namespace DB {
 
 namespace ErrorCodes

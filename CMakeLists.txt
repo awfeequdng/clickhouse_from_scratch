@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 project(clickhouse)
 
+include (cmake/target.cmake)
 
 include(FetchContent)                   # FetchContent_ functions.
 # find_package(PkgConfig REQUIRED)        # pkg_search_module function.
@@ -61,6 +62,8 @@ link_directories(poco_build/lib)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/gtest)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/fmt)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/cityhash102)
+include_directories(contrib/cityhash102/include)
 
 include_directories(contrib/poco/Net/include)
 include_directories(contrib/poco/Foundation/include)
