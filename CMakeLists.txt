@@ -66,10 +66,6 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/cityhash102)
 include_directories(contrib/cityhash102/include)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/replxx)
-# include_directories(contrib/replxx)
-# link_directories(${CMAKE_BINARY_DIR}/contrib/replxx)
-# link_directories(${CMAKE_CURRENT_BINARY_DIR}/contrib/replxx)
-
 
 
 include_directories(contrib/poco/Net/include)
