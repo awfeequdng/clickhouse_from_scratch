@@ -1,3 +1,9 @@
 [submodule "contrib/gtest"]
 	path = contrib/gtest
 	url = https://github.com/google/googletest.git
+[submodule "contrib/poco"]
+	path = contrib/poco
+	url = https://github.com/pocoproject/poco.git
+[submodule "contrib/fmt"]
+	path = contrib/fmt
+	url = https://github.com/fmtlib/fmt.git
