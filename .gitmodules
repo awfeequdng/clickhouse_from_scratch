@@ -10,3 +10,15 @@
 [submodule "contrib/replxx"]
 	path = contrib/replxx
 	url = https://github.com/AmokHuginnsson/replxx.git
+[submodule "contrib/double-conversion"]
+	path = contrib/double-conversion
+	url = https://github.com/google/double-conversion.git
+[submodule "contrib/pcg-random"]
+	path = contrib/pcg-random
+	url = https://github.com/imneme/pcg-cpp.git
+[submodule "contrib/cctz"]
+	path = contrib/cctz
+	url = https://github.com/google/cctz.git
+[submodule "contrib/dragonbox"]
+	path = contrib/dragonbox
+	url = https://github.com/ClickHouse/dragonbox.git

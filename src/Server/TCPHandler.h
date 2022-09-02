@@ -1,8 +1,12 @@
 #pragma once
 
 #include <Poco/Net/TCPServerConnection.h>
+#include "IO/ReadBuffer.h"
+#include "IO/WriteBuffer.h"
 
 #include "IServer.h"
+
+namespace Poco { class Logger; }
 
 namespace DB
 {
@@ -26,6 +30,10 @@ public:
 private:
     IServer & server;
 
+    Poco::Logger * log;
+    /// Streams for reading/writing from/to client connection socket.
+    std::shared_ptr<ReadBuffer> in;
+    std::shared_ptr<WriteBuffer> out;
 
     void runImpl();
     bool receivePacket();

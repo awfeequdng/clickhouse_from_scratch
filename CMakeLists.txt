@@ -66,11 +66,16 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/cityhash102)
 include_directories(contrib/cityhash102/include)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/replxx)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/double-conversion)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/cctz)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/dragonbox)
 
 
 include_directories(contrib/poco/Net/include)
 include_directories(contrib/poco/Foundation/include)
 include_directories(contrib/poco/Util/include)
+
+include_directories(contrib/pcg-random/include)
 
 
 set(CMAKE_BUILD_TYPE Release)
@@ -91,6 +96,7 @@ include_directories(programs/)
 include_directories(programs/server)
 include_directories(base)
 include_directories(base/daemon)
+include_directories(base/pcg-random)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 
@@ -102,7 +108,7 @@ file(GLOB_RECURSE
         ${PROJECT_SOURCE_DIR}/src/*.h
         ${PROJECT_SOURCE_DIR}/base/*.cpp
         ${PROJECT_SOURCE_DIR}/base/*.h
-
+        # ${PROJECT_SOURCE_DIR}/base/pcg-random/*.h
         )
 
 add_library(cfs
@@ -115,6 +121,9 @@ target_link_libraries(cfs
   PocoUtil
   fmt
   replxx
+  double-conversion
+  cctz
+  dragonbox
 )
 
 add_executable(clickhouse
