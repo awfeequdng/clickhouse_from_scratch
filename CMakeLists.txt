@@ -111,7 +111,8 @@ file(GLOB_RECURSE
         ${PROJECT_SOURCE_DIR}/src/*.h
         ${PROJECT_SOURCE_DIR}/base/*.cpp
         ${PROJECT_SOURCE_DIR}/base/*.h
-        # ${PROJECT_SOURCE_DIR}/base/pcg-random/*.h
+        ${PROJECT_SOURCE_DIR}/loggers/*.cpp
+        ${PROJECT_SOURCE_DIR}/loggers/*.h
         )
 
 add_library(cfs

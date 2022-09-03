@@ -15,9 +15,15 @@
 #include <Poco/Net/NetException.h>
 #include <Poco/Util/HelpFormatter.h>
 #include <Poco/Environment.h>
+#include <Poco/ConsoleChannel.h>
+#include <Poco/PatternFormatter.h>
+#include <Poco/FormattingChannel.h>
+
 #include <base/errnoToString.h>
 #include "Common/Exception.h"
 #include "Common/ThreadStatus.h"
+#include "base/logger_useful.h"
+#include "Common/CurrentThread.h"
 
 
 #if defined(OS_LINUX)
@@ -96,9 +102,9 @@ Poco::Net::SocketAddress Server::socketBindListen(Poco::Net::ServerSocket & sock
 }
 
 std::map<std::string, int> port_name_map = {
-    {"http_port", 19000},
-    {"tcp_port", 19003},
-    {"mysql_port", 19004},
+    {"tcp_port", 9000},
+    {"http_port", 9001},
+    {"mysql_port", 9002},
 };
 
 void Server::createServer(const std::string & listen_host, std::string port_name, bool listen_try, CreateServerFunc && func) const
@@ -138,15 +144,30 @@ int Server::run()
     return Application::run(); // NOLINT
 }
 
+
+static void setupLogging(const std::string & log_level)
+{
+    Poco::AutoPtr<Poco::ConsoleChannel> channel(new Poco::ConsoleChannel);
+    Poco::AutoPtr<Poco::PatternFormatter> formatter(new Poco::PatternFormatter);
+    formatter->setProperty("pattern", "%L%Y-%m-%d %H:%M:%S.%i <%p> %s: %t");
+    Poco::AutoPtr<Poco::FormattingChannel> formatting_channel(new Poco::FormattingChannel(formatter, channel));
+    Poco::Logger::root().setChannel(formatting_channel);
+    Poco::Logger::root().setLevel(log_level);
+}
+
 void Server::initialize(Poco::Util::Application & self)
 {
+
+    setupLogging("debug");
     BaseDaemon::initialize(self);
+
+
     std::cout << "starting up" << std::endl;
 
-    // LOG_INFO(&logger(), "OS name: {}, version: {}, architecture: {}",
-        // Poco::Environment::osName(),
-        // Poco::Environment::osVersion(),
-        // Poco::Environment::osArchitecture());
+    LOG_INFO(&logger(), "OS name: {}, version: {}, architecture: {}",
+        Poco::Environment::osName(),
+        Poco::Environment::osVersion(),
+        Poco::Environment::osArchitecture());
     std::cout << Poco::Environment::osName() << " " << Poco::Environment::osVersion() << " " << Poco::Environment::osArchitecture() << std::endl;
 }
 
@@ -165,6 +186,8 @@ void Server::defineOptions(Poco::Util::OptionSet & options)
     BaseDaemon::defineOptions(options);
 }
 
+
+
 int Server::main(const std::vector<std::string> & /*args*/)
 {
     Poco::Logger * log = &logger();
@@ -176,7 +199,7 @@ int Server::main(const std::vector<std::string> & /*args*/)
 
     // auto servers_to_start_before_tables = std::make_shared<std::vector<ProtocolServerAdapter>>();
 
-    std::vector<std::string> listen_hosts = {"127.0.0.1"};
+    std::vector<std::string> listen_hosts = {"localhost"};
 
     bool listen_try = false;
     if (listen_hosts.empty())
