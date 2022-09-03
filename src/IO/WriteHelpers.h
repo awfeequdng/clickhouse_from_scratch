@@ -5,6 +5,7 @@
 #include <limits>
 #include <algorithm>
 #include <iterator>
+#include <concepts>
 
 #include <pcg_random.hpp>
 
@@ -12,12 +13,11 @@
 #include <base/LocalDate.h>
 #include <base/LocalDateTime.h>
 #include <base/find_symbols.h>
-#include <base/extended_types.h>
 #include <base/StringRef.h>
 #include <base/DecomposedFloat.h>
-// #include <base/EnumReflection.h>
+#include <base/EnumReflection.h>
 
-// #include <Core/DecimalFunctions.h>
+#include <Core/DecimalFunctions.h>
 #include <Core/Types.h>
 #include <Core/UUID.h>
 
@@ -186,8 +186,7 @@ inline void writeString(const char * data, size_t size, WriteBuffer & buf)
 }
 
 // Otherwise StringRef and string_view overloads are ambiguous when passing string literal. Prefer std::string_view
-// void writeString(std::same_as<StringRef> auto ref, WriteBuffer & buf)
-void writeString(const StringRef ref, WriteBuffer & buf)
+void writeString(std::same_as<StringRef> auto ref, WriteBuffer & buf)
 {
     writeString(ref.data, ref.size, buf);
 }
@@ -380,9 +379,7 @@ void writeJSONNumber(T x, WriteBuffer & ostr, const FormatSettings & settings)
 {
     bool is_finite = isFinite(x);
 
-    const bool integer = is_integer<T>;
-
-    constexpr bool need_quote = (integer && (sizeof(T) >= 8) && settings.json.quote_64bit_integers)
+    const bool need_quote = (is_integer<T> && (sizeof(T) >= 8) && settings.json.quote_64bit_integers)
         || (settings.json.quote_denormals && !is_finite);
 
     if (need_quote)
@@ -1154,11 +1151,13 @@ struct PcgSerializer
 {
     static void serializePcg32(const pcg32_fast & rng, WriteBuffer & buf)
     {
-        writeText(rng.multiplier(), buf);
-        writeChar(' ', buf);
-        writeText(rng.increment(), buf);
-        writeChar(' ', buf);
-        writeText(rng.state_, buf);
+        std::cout << "not implement serializePcg32 yet" << std::endl;
+        exit(-1);
+        // writeText(rng.multiplier(), buf);
+        // writeChar(' ', buf);
+        // writeText(rng.increment(), buf);
+        // writeChar(' ', buf);
+        // writeText(rng.state_, buf);
     }
 };
 

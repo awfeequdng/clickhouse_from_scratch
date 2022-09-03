@@ -1,5 +1,5 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.17.3)
-set(CMAKE_CXX_STANDARD 17)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.15.3)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
@@ -69,6 +69,8 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/replxx)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/double-conversion)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/cctz)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/dragonbox)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/magic_enum)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/fast_float)
 
 
 include_directories(contrib/poco/Net/include)
@@ -81,8 +83,9 @@ include_directories(contrib/pcg-random/include)
 set(CMAKE_BUILD_TYPE Release)
 
 
-SET (CMAKE_CXX_STANDARD 17)
+SET (CMAKE_CXX_STANDARD 20)
 
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++2a")
 
 # include generated files in project environment
 include_directories(
@@ -124,6 +127,8 @@ target_link_libraries(cfs
   double-conversion
   cctz
   dragonbox
+  magic_enum
+  fast_float
 )
 
 add_executable(clickhouse

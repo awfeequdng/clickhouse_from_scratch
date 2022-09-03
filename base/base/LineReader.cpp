@@ -29,11 +29,11 @@ extern "C"
 namespace
 {
 
-/// Trim ending whitespace inplace
-void trim(String & s)
-{
-    s.erase(std::find_if(s.rbegin(), s.rend(), [](int ch) { return !std::isspace(ch); }).base(), s.end());
-}
+// /// Trim ending whitespace inplace
+// void trim(String & s)
+// {
+//     s.erase(std::find_if(s.rbegin(), s.rend(), [](int ch) { return !std::isspace(ch); }).base(), s.end());
+// }
 
 /// Check if multi-line query is inserted from the paste buffer.
 /// Allows delaying the start of query execution until the entirety of query is inserted.

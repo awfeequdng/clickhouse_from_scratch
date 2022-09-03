@@ -22,3 +22,9 @@
 [submodule "contrib/dragonbox"]
 	path = contrib/dragonbox
 	url = https://github.com/ClickHouse/dragonbox.git
+[submodule "contrib/magic_enum"]
+	path = contrib/magic_enum
+	url = https://github.com/Neargye/magic_enum
+[submodule "contrib/fast_float"]
+	path = contrib/fast_float
+	url = https://github.com/fastfloat/fast_float

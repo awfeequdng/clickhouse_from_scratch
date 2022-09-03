@@ -81,7 +81,6 @@ struct Memory : Allocator
             size_t new_capacity = align(new_size, alignment) + pad_right;
 
             size_t diff = new_capacity - m_capacity;
-            ProfileEvents::increment(ProfileEvents::IOBufferAllocBytes, diff);
 
             m_data = static_cast<char *>(Allocator::realloc(m_data, m_capacity, new_capacity, alignment));
             m_capacity = new_capacity;
@@ -108,9 +107,6 @@ private:
             m_data = nullptr;
             return;
         }
-
-        ProfileEvents::increment(ProfileEvents::IOBufferAllocs);
-        ProfileEvents::increment(ProfileEvents::IOBufferAllocBytes, m_capacity);
 
         size_t new_capacity = align(m_capacity, alignment) + pad_right;
         m_data = static_cast<char *>(Allocator::alloc(new_capacity, alignment));

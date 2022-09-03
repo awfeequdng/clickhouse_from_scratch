@@ -21,10 +21,10 @@ namespace
 {
 
 /// Trim ending whitespace inplace
-void trim(String & s)
-{
-    s.erase(std::find_if(s.rbegin(), s.rend(), [](int ch) { return !std::isspace(ch); }).base(), s.end());
-}
+// void trim(String & s)
+// {
+//     s.erase(std::find_if(s.rbegin(), s.rend(), [](int ch) { return !std::isspace(ch); }).base(), s.end());
+// }
 
 /// Copied from replxx::src/util.cxx::now_ms_str() under the terms of 3-clause BSD license of Replxx.
 /// Copyright (c) 2017-2018, Marcin Konarski (amok at codestation.org)

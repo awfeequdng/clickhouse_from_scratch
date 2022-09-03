@@ -17,6 +17,7 @@
 #include <Poco/Environment.h>
 #include <base/errnoToString.h>
 #include "Common/Exception.h"
+#include "Common/ThreadStatus.h"
 
 
 #if defined(OS_LINUX)
@@ -96,8 +97,8 @@ Poco::Net::SocketAddress Server::socketBindListen(Poco::Net::ServerSocket & sock
 
 std::map<std::string, int> port_name_map = {
     {"http_port", 19000},
-    {"tcp_port", 19001},
-    {"mysql_port", 19002},
+    {"tcp_port", 19003},
+    {"mysql_port", 19004},
 };
 
 void Server::createServer(const std::string & listen_host, std::string port_name, bool listen_try, CreateServerFunc && func) const
@@ -166,6 +167,9 @@ void Server::defineOptions(Poco::Util::OptionSet & options)
 
 int Server::main(const std::vector<std::string> & /*args*/)
 {
+    Poco::Logger * log = &logger();
+    MainThreadStatus::getInstance();
+
     Poco::Timespan keep_alive_timeout(10, 0);
 
     Poco::ThreadPool server_pool(3, /*max_connections*/ 1024);
@@ -220,8 +224,8 @@ int Server::main(const std::vector<std::string> & /*args*/)
             {
                 Poco::Net::ServerSocket socket;
                 auto address = socketBindListen(socket, listen_host, port);
-                socket.setReceiveTimeout(/*receive_timeout*/ 10);
-                socket.setSendTimeout(/*send_timeout*/ 10);
+                socket.setReceiveTimeout(/*receive_timeout*/ 10000000);
+                socket.setSendTimeout(/*send_timeout*/ 10000000);
                 servers->emplace_back(port_name, std::make_unique<Poco::Net::TCPServer>(
                     new TCPHandlerFactory(*this),
                     server_pool,

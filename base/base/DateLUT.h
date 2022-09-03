@@ -4,7 +4,6 @@
 
 #include "defines.h"
 
-
 #include <atomic>
 #include <memory>
 #include <mutex>

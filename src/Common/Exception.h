@@ -3,12 +3,11 @@
 #include <cerrno>
 #include <vector>
 #include <memory>
-#include <optional>
 
-#include "Common/ErrorCodes.h"
 #include <Poco/Version.h>
 #include <Poco/Exception.h>
 
+#include <Common/StackTrace.h>
 
 #include <fmt/format.h>
 
@@ -37,8 +36,8 @@ public:
 
     // Format message with fmt::format, like the logging functions.
     template <typename ...Args>
-    Exception(int code, const std::string & fmt, Args&&... args)
-        : Exception(fmt::format(fmt, std::forward<Args>(args)...), code)
+    Exception(int code, const std::string& fmt, Args&&... args)
+        : Exception(fmt::format(fmt::runtime(fmt), std::forward<Args>(args)...), code)
     {}
 
     struct CreateFromPocoTag {};
@@ -73,7 +72,9 @@ public:
     FramePointers getStackFramePointers() const;
 
 private:
-
+#ifndef STD_EXCEPTION_HAS_STACK_TRACE
+    StackTrace trace;
+#endif
     bool remote = false;
 
     const char * className() const throw() override { return "DB::Exception"; }
@@ -118,7 +119,7 @@ public:
     // Format message with fmt::format, like the logging functions.
     template <typename ...Args>
     ParsingException(int code, const std::string & fmt, Args&&... args)
-        : Exception(fmt::format(fmt, std::forward<Args>(args)...), code)
+        : Exception(fmt::format(fmt::runtime(fmt), std::forward<Args>(args)...), code)
     {}
 
 
