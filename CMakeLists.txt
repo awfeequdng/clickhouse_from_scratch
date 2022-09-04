@@ -5,6 +5,18 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 project(clickhouse)
 
+
+set (CONFIG_VERSION "${CMAKE_CURRENT_BINARY_DIR}/src/Common/config_version.h")
+set (CONFIG_COMMON "${CMAKE_CURRENT_BINARY_DIR}/src/Common/config.h")
+
+include (./cmake/version.cmake)
+message (STATUS "Will build ${VERSION_FULL} revision ${VERSION_REVISION} ${VERSION_OFFICIAL}")
+configure_file (src/Common/config.h.in ${CONFIG_COMMON})
+configure_file (src/Common/config_version.h.in ${CONFIG_VERSION})
+configure_file (src/Core/config_core.h.in "${CMAKE_CURRENT_BINARY_DIR}/src/Core/include/config_core.h")
+
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/src)
+
 include (cmake/target.cmake)
 
 include(FetchContent)                   # FetchContent_ functions.
@@ -127,9 +139,10 @@ target_link_libraries(cfs
   replxx
   double-conversion
   cctz
-  dragonbox
+  dragonbox_to_chars
   magic_enum
   fast_float
+  ${CMAKE_DL_LIBS}
 )
 
 add_executable(clickhouse

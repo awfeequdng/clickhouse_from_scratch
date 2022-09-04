@@ -3,13 +3,72 @@
 #include <Poco/Net/TCPServerConnection.h>
 #include "IO/ReadBuffer.h"
 #include "IO/WriteBuffer.h"
-
+#include <Core/Protocol.h>
 #include "IServer.h"
+#include <Common/Stopwatch.h>
+#include <optional>
+#include <base/UUID.h>
+#include <Interpreters/Context_fwd.h>
+#include <Interpreters/Session.h>
 
 namespace Poco { class Logger; }
 
 namespace DB
 {
+
+/// State of query processing.
+struct QueryState
+{
+    /// Identifier of the query.
+    String query_id;
+
+    Protocol::Compression compression = Protocol::Compression::Disable;
+
+    /// From where to read data for INSERT.
+    std::shared_ptr<ReadBuffer> maybe_compressed_in;
+    /// Where to write result data.
+    std::shared_ptr<WriteBuffer> maybe_compressed_out;
+    /// Query text.
+    String query;
+
+
+    /// Is request cancelled
+    bool is_cancelled = false;
+    bool is_connection_closed = false;
+    /// empty or not
+    bool is_empty = true;
+    /// Data was sent.
+    bool sent_all_data = false;
+    /// Request requires data from the client (INSERT, but not INSERT SELECT).
+    bool need_receive_data_for_insert = false;
+    /// Data was read.
+    bool read_all_data = false;
+
+    /// A state got uuids to exclude from a query
+    std::optional<std::vector<UUID>> part_uuids_to_ignore;
+
+    /// Request requires data from client for function input()
+    bool need_receive_data_for_input = false;
+    /// temporary place for incoming data block for input()
+
+    /// If true, the data packets will be skipped instead of reading. Used to recover after errors.
+    bool skipping_data = false;
+
+    void reset()
+    {
+        *this = QueryState();
+    }
+
+    bool empty() const
+    {
+        return is_empty;
+    }
+};
+
+struct LastBlockInputParameters
+{
+    Protocol::Compression compression = Protocol::Compression::Disable;
+};
 
 class TCPHandler : public Poco::Net::TCPServerConnection
 {
@@ -22,7 +81,7 @@ public:
       *  because it allows to check the IP ranges of the trusted proxy.
       * Proxy-forwarded (original client) IP address is used for quota accounting if quota is keyed by forwarded IP.
       */
-    TCPHandler(IServer & server_, const Poco::Net::StreamSocket & socket_);
+    TCPHandler(IServer & server_, const Poco::Net::StreamSocket & socket_, std::string server_display_name_);
     ~TCPHandler() override;
 
     void run() override;
@@ -48,14 +107,68 @@ private:
     UInt64 interactive_delay = 100000;
     Poco::Timespan sleep_in_send_tables_status;
     UInt64 unknown_packet_in_send_data = 0;
-    Poco::Timespan sleep_in_receive_cancel;
+    Poco::Timespan sleep_in_receive_cancel = 100000;
+
+    std::unique_ptr<Session> session;
+    ContextMutablePtr query_context;
 
     /// Streams for reading/writing from/to client connection socket.
     std::shared_ptr<ReadBuffer> in;
     std::shared_ptr<WriteBuffer> out;
 
+    /// Time after the last check to stop the request and send the progress.
+    Stopwatch after_check_cancelled;
+    Stopwatch after_send_progress;
+
+    String default_database;
+
+    /// For inter-server secret (remote_server.*.secret)
+    bool is_interserver_mode = false;
+    String salt;
+    String cluster;
+    String cluster_secret;
+
+    std::mutex task_callback_mutex;
+
+    /// At the moment, only one ongoing query in the connection is supported at a time.
+    QueryState state;
+    /// Last block input parameters are saved to be able to receive unexpected data packet sent after exception.
+    LastBlockInputParameters last_block_in;
+
+    /// It is the name of the server that will be sent to the client.
+    String server_display_name;
+
     void runImpl();
+    void extractConnectionSettingsFromContext(const ContextPtr & context);
+    // bool receiveProxyHeader();
+    void receiveUnexpectedQuery();
+    void receiveUnexpectedHello();
+    void receiveHello();
     bool receivePacket();
+    void receiveQuery();
+    void receiveIgnoredPartUUIDs();
+    String receiveReadTaskResponseAssumeLocked();
+    bool receiveData(bool scalar);
+    bool readDataNext();
+    void readData();
+    void skipData();
+    void receiveClusterNameAndSalt();
+
+    bool receiveUnexpectedData(bool throw_exception = true);
+
+
+    void sendHello();
+    // void sendData(const Block & block);    /// Write a block to the network.
+    // void sendLogData(const Block & block);
+    // void sendTableColumns(const ColumnsDescription & columns);
+    void sendException(const Exception & e, bool with_stack_trace);
+    void sendProgress();
+    void sendLogs();
+    void sendEndOfStream();
+    void sendPartUUIDs();
+    void sendReadTaskRequestAssumeLocked();
+    // void sendTotals(const Block & totals);
+    // void sendExtremes(const Block & extremes);
 
 };
 

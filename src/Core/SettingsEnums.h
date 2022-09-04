@@ -1,6 +1,7 @@
 #pragma once
 
-
+#include <Core/SettingsFields.h>
+#include <Formats/FormatSettings.h>
 namespace DB
 {
 enum class LoadBalancing
@@ -19,6 +20,7 @@ enum class LoadBalancing
     // round robin across replicas with the same number of errors.
     ROUND_ROBIN,
 };
+DECLARE_SETTING_ENUM(LoadBalancing)
 
 enum class JoinStrictness
 {
@@ -26,7 +28,7 @@ enum class JoinStrictness
     ALL, /// Query JOIN without strictness -> ALL JOIN ...
     ANY, /// Query JOIN without strictness -> ANY JOIN ...
 };
-
+DECLARE_SETTING_ENUM(JoinStrictness)
 enum class JoinAlgorithm
 {
     AUTO = 0,
@@ -34,7 +36,7 @@ enum class JoinAlgorithm
     PARTIAL_MERGE,
     PREFER_PARTIAL_MERGE,
 };
-
+DECLARE_SETTING_ENUM(JoinAlgorithm)
 
 /// Which rows should be included in TOTALS.
 enum class TotalsMode
@@ -48,6 +50,13 @@ enum class TotalsMode
     AFTER_HAVING_AUTO         = 3, /// Automatically select between INCLUSIVE and EXCLUSIVE,
 };
 
+DECLARE_SETTING_ENUM(TotalsMode)
+
+// /// The settings keeps OverflowMode which cannot be OverflowMode::ANY.
+// DECLARE_SETTING_ENUM(OverflowMode)
+
+// /// The settings keeps OverflowMode which can be OverflowMode::ANY.
+// DECLARE_SETTING_ENUM_WITH_RENAME(OverflowModeGroupBy, OverflowMode)
 
 
 /// The setting for executing distributed subqueries inside IN or JOIN sections.
@@ -58,6 +67,12 @@ enum class DistributedProductMode
     GLOBAL,      /// Convert to global query
     ALLOW        /// Enable
 };
+DECLARE_SETTING_ENUM(DistributedProductMode)
+
+
+DECLARE_SETTING_ENUM_WITH_RENAME(DateTimeInputFormat, FormatSettings::DateTimeInputFormat)
+
+DECLARE_SETTING_ENUM_WITH_RENAME(DateTimeOutputFormat, FormatSettings::DateTimeOutputFormat)
 
 enum class LogsLevel
 {
@@ -71,8 +86,9 @@ enum class LogsLevel
     test,
 };
 
+DECLARE_SETTING_ENUM(LogsLevel)
 // Make it signed for compatibility with DataTypeEnum8
-enum QueryLogElementType
+enum QueryLogElementType : int8_t
 {
     QUERY_START = 1,
     QUERY_FINISH = 2,
@@ -80,11 +96,14 @@ enum QueryLogElementType
     EXCEPTION_WHILE_PROCESSING = 4,
 };
 
+DECLARE_SETTING_ENUM_WITH_RENAME(LogQueriesType, QueryLogElementType)
+
 enum class DefaultDatabaseEngine
 {
     Ordinary,
     Atomic,
 };
+DECLARE_SETTING_ENUM(DefaultDatabaseEngine)
 
 enum class MySQLDataTypesSupport
 {
@@ -92,13 +111,14 @@ enum class MySQLDataTypesSupport
     DATETIME64, // convert MySQL's DATETIME and TIMESTAMP and ClickHouse DateTime64 if precision is > 0 or range is greater that for DateTime.
     // ENUM
 };
-
+DECLARE_SETTING_MULTI_ENUM(MySQLDataTypesSupport)
 enum class UnionMode
 {
     Unspecified = 0, // Query UNION without UnionMode will throw exception
     ALL, // Query UNION without UnionMode -> SELECT ... UNION ALL SELECT ...
     DISTINCT // Query UNION without UnionMode -> SELECT ... UNION DISTINCT SELECT ...
 };
+DECLARE_SETTING_ENUM(UnionMode)
 
 enum class DistributedDDLOutputMode
 {
@@ -107,7 +127,7 @@ enum class DistributedDDLOutputMode
     NULL_STATUS_ON_TIMEOUT,
     NEVER_THROW,
 };
-
+DECLARE_SETTING_ENUM(DistributedDDLOutputMode)
 enum class HandleKafkaErrorMode
 {
     DEFAULT = 0, // Ignore errors whit threshold.
@@ -116,13 +136,16 @@ enum class HandleKafkaErrorMode
     /*CUSTOM_SYSTEM_TABLE, Put errors to in a custom system table. This is not implemented now.  */
 };
 
-
+DECLARE_SETTING_ENUM(HandleKafkaErrorMode)
 enum class ShortCircuitFunctionEvaluation
 {
     ENABLE, // Use short-circuit function evaluation for functions that are suitable for it.
     FORCE_ENABLE, // Use short-circuit function evaluation for all functions.
     DISABLE, // Disable short-circuit function evaluation.
 };
+DECLARE_SETTING_ENUM(ShortCircuitFunctionEvaluation)
+
+DECLARE_SETTING_ENUM_WITH_RENAME(EnumComparingMode, FormatSettings::EnumComparingMode)
 
 
 }

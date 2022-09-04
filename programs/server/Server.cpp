@@ -250,7 +250,7 @@ int Server::main(const std::vector<std::string> & /*args*/)
                 socket.setReceiveTimeout(/*receive_timeout*/ 10000000);
                 socket.setSendTimeout(/*send_timeout*/ 10000000);
                 servers->emplace_back(port_name, std::make_unique<Poco::Net::TCPServer>(
-                    new TCPHandlerFactory(*this),
+                    new TCPHandlerFactory(*this, false),
                     server_pool,
                     socket,
                     new Poco::Net::TCPServerParams));

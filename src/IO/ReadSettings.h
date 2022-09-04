@@ -49,7 +49,7 @@ enum class RemoteFSReadMethod
     threadpool,
 };
 
-class MMappedFileCache;
+// class MMappedFileCache;
 
 struct ReadSettings
 {
@@ -68,8 +68,8 @@ struct ReadSettings
     size_t direct_io_threshold = 0;
 
     /// For 'mmap' method.
-    size_t mmap_threshold = 0;
-    MMappedFileCache * mmap_cache = nullptr;
+    // size_t mmap_threshold = 0;
+    // MMappedFileCache * mmap_cache = nullptr;
 
     /// For 'pread_threadpool' method. Lower is more priority.
     size_t priority = 0;

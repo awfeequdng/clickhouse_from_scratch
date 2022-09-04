@@ -17,9 +17,10 @@
 #include <Poco/Net/SocketAddress.h>
 #include <Poco/Version.h>
 
+#include <loggers/Loggers.h>
 #include <base/types.h>
 
-class BaseDaemon : public Poco::Util::ServerApplication
+class BaseDaemon : public Poco::Util::ServerApplication, Loggers
 {
 
 public:

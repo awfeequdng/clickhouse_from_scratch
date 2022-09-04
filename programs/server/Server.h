@@ -30,6 +30,20 @@ class Server :public BaseDaemon, public IServer
 public:
     using ServerApplication::run;
 
+    Poco::Util::LayeredConfiguration & config() const override
+    {
+        return BaseDaemon::config();
+    }
+
+    Poco::Logger & logger() const override
+    {
+        return BaseDaemon::logger();
+    }
+
+    ContextMutablePtr context() const override
+    {
+        return global_context;
+    }
 
     bool isCancelled() const override
     {
@@ -49,6 +63,8 @@ protected:
 
 private:
     Poco::Net::SocketAddress socketBindListen(Poco::Net::ServerSocket & socket, const std::string & host, UInt16 port, [[maybe_unused]] bool secure = false) const;
+
+    ContextMutablePtr global_context;
 
     using CreateServerFunc = std::function<void(UInt16)>;
     void createServer(const std::string & listen_host, std::string port_name, bool listen_try, CreateServerFunc && func) const;

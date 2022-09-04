@@ -55,7 +55,7 @@ public:
     template <typename ...Args>
     void addMessage(const std::string& format, Args&&... args)
     {
-        extendedMessage(fmt::format(format, std::forward<Args>(args)...));
+        extendedMessage(fmt::format(fmt::runtime(format), std::forward<Args>(args)...));
     }
 
     void addMessage(const std::string& message)
