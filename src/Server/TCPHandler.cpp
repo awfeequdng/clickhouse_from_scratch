@@ -24,6 +24,7 @@
 #include <base/scope_guard.h>
 #include <Interpreters/Session.h>
 
+#include "Interpreters/Context.h"
 #include "Interpreters/ClientInfo.h"
 
 #include <Common/config_version.h>
@@ -136,19 +137,19 @@ void TCPHandler::receiveHello()
 }
 
 
-// void TCPHandler::extractConnectionSettingsFromContext(const ContextPtr & context)
-// {
-//     const auto & settings = context->getSettingsRef();
-//     send_exception_with_stack_trace = settings.calculate_text_stack_trace;
-//     send_timeout = settings.send_timeout;
-//     receive_timeout = settings.receive_timeout;
-//     poll_interval = settings.poll_interval;
-//     idle_connection_timeout = settings.idle_connection_timeout;
-//     interactive_delay = settings.interactive_delay;
-//     sleep_in_send_tables_status = settings.sleep_in_send_tables_status_ms;
-//     unknown_packet_in_send_data = settings.unknown_packet_in_send_data;
-//     sleep_in_receive_cancel = settings.sleep_in_receive_cancel_ms;
-// }
+void TCPHandler::extractConnectionSettingsFromContext(const ContextPtr & context)
+{
+    const auto & settings = context->getSettingsRef();
+    send_exception_with_stack_trace = settings.calculate_text_stack_trace;
+    send_timeout = settings.send_timeout;
+    receive_timeout = settings.receive_timeout;
+    poll_interval = settings.poll_interval;
+    idle_connection_timeout = settings.idle_connection_timeout;
+    interactive_delay = settings.interactive_delay;
+    sleep_in_send_tables_status = settings.sleep_in_send_tables_status_ms;
+    unknown_packet_in_send_data = settings.unknown_packet_in_send_data;
+    sleep_in_receive_cancel = settings.sleep_in_receive_cancel_ms;
+}
 
 
 void TCPHandler::runImpl()
@@ -156,8 +157,8 @@ void TCPHandler::runImpl()
     setThreadName("TCPHandler");
     ThreadStatus thread_status;
 
-    // session = std::make_unique<Session>(server.context(), ClientInfo::Interface::TCP);
-    // extractConnectionSettingsFromContext(server.context());
+    session = std::make_unique<Session>(server.context(), ClientInfo::Interface::TCP);
+    extractConnectionSettingsFromContext(server.context());
 
     // std::cout << "runImpl, receive_timeout: " << receive_timeout << std::endl;
 
