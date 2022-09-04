@@ -31,9 +31,11 @@
 #include "Common/CurrentThread.h"
 #include "Common/getExecutablePath.h"
 #include "Common/StringUtils/StringUtils.h"
-
+#include "Common/getNumberOfPhysicalCPUCores.h"
 #include <filesystem>
 #include "Common/config_version.h"
+#include "base/phdr_cache.h"
+#include "Common/formatReadable.h"
 
 #if defined(OS_LINUX)
 #    include <sys/mman.h>
@@ -494,6 +496,30 @@ int Server::main(const std::vector<std::string> & /*args*/)
     }
 #endif
 
+
+    /// Describe multiple reasons when query profiler cannot work.
+
+#if !USE_UNWIND
+    LOG_INFO(log, "Query Profiler and TraceCollector are disabled because they cannot work without bundled unwind (stack unwinding) library.");
+#endif
+
+#if WITH_COVERAGE
+    LOG_INFO(log, "Query Profiler and TraceCollector are disabled because they work extremely slow with test coverage.");
+#endif
+
+#if defined(SANITIZER)
+    LOG_INFO(log, "Query Profiler disabled because they cannot work under sanitizers"
+        " when two different stack unwinding methods will interfere with each other.");
+#endif
+
+#if !defined(__x86_64__)
+    LOG_INFO(log, "Query Profiler is only tested on x86_64. It also known to not work under qemu-user.");
+#endif
+
+    if (!hasPHDRCache())
+        LOG_INFO(log, "Query Profiler and TraceCollector are disabled because they require PHDR cache to be created"
+            " (otherwise the function 'dl_iterate_phdr' is not lock free and not async-signal safe).");
+
     auto servers = std::make_shared<std::vector<ProtocolServerAdapter>>();
     {
         for (const auto & listen_host : listen_hosts)
@@ -535,8 +561,17 @@ int Server::main(const std::vector<std::string> & /*args*/)
         }
 
         if (servers->empty()) {
-            std::cout << "No servers started (add valid listen_host and 'tcp_port' or 'http_port' to configuration file.)" << std::endl;
-            exit(-1);
+            throw Exception("No servers started (add valid listen_host and 'tcp_port' or 'http_port' to configuration file.)",
+                ErrorCodes::NO_ELEMENTS_IN_CONFIG);
+        }
+
+        buildLoggers(config(), logger());
+
+        {
+            LOG_INFO(log, "Available RAM: {}; physical cores: {}; logical cores: {}.",
+                formatReadableSizeWithBinarySuffix(memory_amount),
+                getNumberOfPhysicalCPUCores(),  // on ARM processors it can show only enabled at current moment cores
+                std::thread::hardware_concurrency());
         }
 
         for (auto & server : *servers)

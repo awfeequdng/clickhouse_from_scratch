@@ -20,7 +20,7 @@
 #include <loggers/Loggers.h>
 #include <base/types.h>
 
-class BaseDaemon : public Poco::Util::ServerApplication, Loggers
+class BaseDaemon : public Poco::Util::ServerApplication, public Loggers
 {
 
 public:
