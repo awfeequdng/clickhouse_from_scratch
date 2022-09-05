@@ -73,7 +73,11 @@ link_directories(poco_build/lib)
 
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/gtest)
+
+set(CMAKE_CXX_STANDARD 17)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/fmt)
+set(CMAKE_CXX_STANDARD 20)
+
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/cityhash102)
 include_directories(contrib/cityhash102/include)
 

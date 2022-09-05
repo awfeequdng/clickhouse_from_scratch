@@ -10,7 +10,11 @@
 #include <base/UUID.h>
 #include <Interpreters/Context_fwd.h>
 #include <Interpreters/Session.h>
+#include <IO/TimeoutSetter.h>
+#include <Formats/NativeReader.h>
+#include <Formats/NativeWriter.h>
 
+#include <Core/QueryProcessingStage.h>
 namespace Poco { class Logger; }
 
 namespace DB
@@ -22,12 +26,16 @@ struct QueryState
     /// Identifier of the query.
     String query_id;
 
+    QueryProcessingStage::Enum stage = QueryProcessingStage::Complete;
     Protocol::Compression compression = Protocol::Compression::Disable;
 
     /// From where to read data for INSERT.
     std::shared_ptr<ReadBuffer> maybe_compressed_in;
+    std::unique_ptr<NativeReader> block_in;
+
     /// Where to write result data.
     std::shared_ptr<WriteBuffer> maybe_compressed_out;
+    std::unique_ptr<NativeWriter> block_out;
     /// Query text.
     String query;
 
@@ -53,6 +61,9 @@ struct QueryState
 
     /// If true, the data packets will be skipped instead of reading. Used to recover after errors.
     bool skipping_data = false;
+
+    /// Timeouts setter for current query
+    std::unique_ptr<TimeoutSetter> timeout_setter;
 
     void reset()
     {
@@ -141,8 +152,6 @@ private:
     void runImpl();
     void extractConnectionSettingsFromContext(const ContextPtr & context);
     // bool receiveProxyHeader();
-    void receiveUnexpectedQuery();
-    void receiveUnexpectedHello();
     void receiveHello();
     bool receivePacket();
     void receiveQuery();
@@ -155,7 +164,10 @@ private:
     void receiveClusterNameAndSalt();
 
     bool receiveUnexpectedData(bool throw_exception = true);
-
+    [[noreturn]] void receiveUnexpectedQuery();
+    [[noreturn]] void receiveUnexpectedIgnoredPartUUIDs();
+    [[noreturn]] void receiveUnexpectedHello();
+    [[noreturn]] void receiveUnexpectedTablesStatusRequest();
 
     void sendHello();
     // void sendData(const Block & block);    /// Write a block to the network.
@@ -170,6 +182,7 @@ private:
     // void sendTotals(const Block & totals);
     // void sendExtremes(const Block & extremes);
 
+    void initBlockInput();
 };
 
 }

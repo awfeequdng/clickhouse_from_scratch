@@ -4,6 +4,7 @@
 #include <Common/SettingsChanges.h>
 #include <unordered_map>
 #include "Core/MyBlank.h"
+#include <iostream>
 
 namespace DB
 {
@@ -446,7 +447,10 @@ void BaseSettings<Traits_>::read(ReadBuffer & in, SettingsWriteFormat format)
     {
         String name = BaseSettingsHelpers::readString(in);
         if (name.empty() /* empty string is a marker of the end of settings */)
+        {
+            std::cout << "empty settings.\n";
             break;
+        }
         size_t index = accessor.find(name);
 
         using Flags = BaseSettingsHelpers::Flags;

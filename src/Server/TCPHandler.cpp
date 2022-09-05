@@ -151,6 +151,12 @@ void TCPHandler::extractConnectionSettingsFromContext(const ContextPtr & context
     sleep_in_receive_cancel = settings.sleep_in_receive_cancel_ms;
 }
 
+void TCPHandler::sendException(const Exception & e, bool with_stack_trace)
+{
+    writeVarUInt(Protocol::Server::Exception, *out);
+    writeException(e, *out, with_stack_trace);
+    out->next();
+}
 
 void TCPHandler::runImpl()
 {
@@ -181,6 +187,19 @@ void TCPHandler::runImpl()
     {
         receiveHello();
         sendHello();
+
+        if (!is_interserver_mode) /// In interserver mode queries are executed without a session context.
+        {
+            session->makeSessionContext();
+
+            /// If session created, then settings in session context has been updated.
+            /// So it's better to update the connection settings for flexibility.
+            extractConnectionSettingsFromContext(session->sessionContext());
+
+            /// When connecting, the default database could be specified.
+            if (!default_database.empty())
+                session->sessionContext()->setCurrentDatabase(default_database);
+        }
     }
     catch (const Exception & e) /// Typical for an incorrect username, password, or address.
     {
@@ -193,7 +212,6 @@ void TCPHandler::runImpl()
 
         if (e.code() == ErrorCodes::ATTEMPT_TO_READ_AFTER_EOF)
         {
-            std::cout << "Client has gone away.\n";
             LOG_INFO(log, "Client has gone away.");
             return;
         }
@@ -201,8 +219,7 @@ void TCPHandler::runImpl()
         try
         {
             /// We try to send error information to the client.
-            std::cout << "We try to send error information to the client.\n";
-            // sendException(e, send_exception_with_stack_trace);
+            sendException(e, send_exception_with_stack_trace);
         }
         catch (...) {}
 
@@ -229,10 +246,33 @@ void TCPHandler::runImpl()
         if (server.isCancelled() || in->eof())
             break;
 
+        Stopwatch watch;
+        state.reset();
+
+        /** An exception during the execution of request (it must be sent over the network to the client).
+         *  The client will be able to accept it, if it did not happen while sending another packet and the client has not disconnected yet.
+         */
+        std::optional<DB::Exception> exception;
+        bool network_error = false;
+
         try
         {
-            if (!receivePacket())
+            /// If a user passed query-local timeouts, reset socket to initial state at the end of the query
+            SCOPE_EXIT({state.timeout_setter.reset();});
+
+            if (!receivePacket()) {
+                LOG_DEBUG(log, "receive packet failed.");
                 continue;
+            }
+            LOG_INFO(log, "receive packet success.");
+
+            /// Sync timeouts on client and server during current query to avoid dangling queries on server
+            /// NOTE: We use send_timeout for the receive timeout and vice versa (change arguments ordering in TimeoutSetter),
+            ///  because send_timeout is client-side setting which has opposite meaning on the server side.
+            /// NOTE: these settings are applied only for current connection (not for distributed tables' connections)
+            state.timeout_setter = std::make_unique<TimeoutSetter>(socket(), receive_timeout, send_timeout);
+
+            /// Processing Query
         }
         catch (const Poco::Net::NetException & e)
         {
@@ -252,54 +292,53 @@ void TCPHandler::runImpl()
 
 void TCPHandler::receiveQuery()
 {
-//     UInt64 stage = 0;
-//     UInt64 compression = 0;
+    UInt64 stage = 0;
+    UInt64 compression = 0;
 
-//     state.is_empty = false;
-//     readStringBinary(state.query_id, *in);
+    state.is_empty = false;
+    readStringBinary(state.query_id, *in);
 
-//     /// In interserer mode,
-//     /// initial_user can be empty in case of Distributed INSERT via Buffer/Kafka,
-//     /// (i.e. when the INSERT is done with the global context w/o user),
-//     /// so it is better to reset session to avoid using old user.
-//     if (is_interserver_mode)
-//     {
-//         std::cout << "not implementing interserver_mode" << std::endl;
-//         exit(-1);
-//         // ClientInfo original_session_client_info = session->getClientInfo();
-//         // session = std::make_unique<Session>(server.context(), ClientInfo::Interface::TCP_INTERSERVER);
-//         // session->getClientInfo() = original_session_client_info;
-//     }
+    /// In interserer mode,
+    /// initial_user can be empty in case of Distributed INSERT via Buffer/Kafka,
+    /// (i.e. when the INSERT is done with the global context w/o user),
+    /// so it is better to reset session to avoid using old user.
+    if (is_interserver_mode)
+    {
+        ClientInfo original_session_client_info = session->getClientInfo();
+        session = std::make_unique<Session>(server.context(), ClientInfo::Interface::TCP_INTERSERVER);
+        session->getClientInfo() = original_session_client_info;
+    }
 
-//     /// Read client info.
-//     // ClientInfo client_info = session->getClientInfo();
-//     // if (client_tcp_protocol_version >= DBMS_MIN_REVISION_WITH_CLIENT_INFO)
-//     //     client_info.read(*in, client_tcp_protocol_version);
-//     std::cout << "not receive client info" << std::endl;
+    /// Read client info.
+    ClientInfo client_info = session->getClientInfo();
+    if (client_tcp_protocol_version >= DBMS_MIN_REVISION_WITH_CLIENT_INFO)
+        client_info.read(*in, client_tcp_protocol_version);
 
-//     /// Per query settings are also passed via TCP.
-//     /// We need to check them before applying due to they can violate the settings constraints.
-//     auto settings_format = (client_tcp_protocol_version >= DBMS_MIN_REVISION_WITH_SETTINGS_SERIALIZED_AS_STRINGS)
-//         ? SettingsWriteFormat::STRINGS_WITH_FLAGS
-//         : SettingsWriteFormat::BINARY;
-//     Settings passed_settings;
-//     passed_settings.read(*in, settings_format);
+    /// Per query settings are also passed via TCP.
+    /// We need to check them before applying due to they can violate the settings constraints.
+    auto settings_format = (client_tcp_protocol_version >= DBMS_MIN_REVISION_WITH_SETTINGS_SERIALIZED_AS_STRINGS)
+        ? SettingsWriteFormat::STRINGS_WITH_FLAGS
+        : SettingsWriteFormat::BINARY;
+    Settings passed_settings;
+    passed_settings.read(*in, settings_format);
 
-//     /// Interserver secret.
-//     std::string received_hash;
-//     if (client_tcp_protocol_version >= DBMS_MIN_REVISION_WITH_INTERSERVER_SECRET)
-//     {
-//         readStringBinary(received_hash, *in, 32);
-//     }
+    /// Interserver secret.
+    std::string received_hash;
+    if (client_tcp_protocol_version >= DBMS_MIN_REVISION_WITH_INTERSERVER_SECRET)
+    {
+        readStringBinary(received_hash, *in, 32);
+    }
 
-//     readVarUInt(stage, *in);
-//     state.stage = QueryProcessingStage::Enum(stage);
+    readVarUInt(stage, *in);
+    state.stage = QueryProcessingStage::Enum(stage);
 
-//     readVarUInt(compression, *in);
-//     state.compression = static_cast<Protocol::Compression>(compression);
-//     last_block_in.compression = state.compression;
+    readVarUInt(compression, *in);
+    state.compression = static_cast<Protocol::Compression>(compression);
+    last_block_in.compression = state.compression;
 
-//     readStringBinary(state.query, *in);
+    readStringBinary(state.query, *in);
+
+    LOG_INFO(log, "receive query: {}", state.query);
 
 //     if (is_interserver_mode)
 //     {
@@ -335,83 +374,168 @@ void TCPHandler::receiveQuery()
 // #endif
 //     }
 
-//     query_context = session->makeQueryContext(std::move(client_info));
+    query_context = session->makeQueryContext(std::move(client_info));
 
-//     /// Sets the default database if it wasn't set earlier for the session context.
-//     if (!default_database.empty() && !session->sessionContext())
-//         query_context->setCurrentDatabase(default_database);
+    /// Sets the default database if it wasn't set earlier for the session context.
+    if (!default_database.empty() && !session->sessionContext())
+        query_context->setCurrentDatabase(default_database);
 
-//     if (state.part_uuids_to_ignore)
-//         query_context->getIgnoredPartUUIDs()->add(*state.part_uuids_to_ignore);
+    // if (state.part_uuids_to_ignore)
+    //     query_context->getIgnoredPartUUIDs()->add(*state.part_uuids_to_ignore);
 
-//     query_context->setProgressCallback([this] (const Progress & value) { return this->updateProgress(value); });
+    // query_context->setProgressCallback([this] (const Progress & value) { return this->updateProgress(value); });
 
-//     ///
-//     /// Settings
-//     ///
-//     auto settings_changes = passed_settings.changes();
-//     auto query_kind = query_context->getClientInfo().query_kind;
-//     if (query_kind == ClientInfo::QueryKind::INITIAL_QUERY)
-//     {
-//         /// Throw an exception if the passed settings violate the constraints.
-//         query_context->checkSettingsConstraints(settings_changes);
-//     }
-//     else
-//     {
-//         /// Quietly clamp to the constraints if it's not an initial query.
-//         query_context->clampToSettingsConstraints(settings_changes);
-//     }
-//     query_context->applySettingsChanges(settings_changes);
+    ///
+    /// Settings
+    ///
+    auto settings_changes = passed_settings.changes();
+    auto query_kind = query_context->getClientInfo().query_kind;
+    // if (query_kind == ClientInfo::QueryKind::INITIAL_QUERY)
+    // {
+    //     /// Throw an exception if the passed settings violate the constraints.
+    //     query_context->checkSettingsConstraints(settings_changes);
+    // }
+    // else
+    // {
+    //     /// Quietly clamp to the constraints if it's not an initial query.
+    //     query_context->clampToSettingsConstraints(settings_changes);
+    // }
+    query_context->applySettingsChanges(settings_changes);
 
-//     /// Use the received query id, or generate a random default. It is convenient
-//     /// to also generate the default OpenTelemetry trace id at the same time, and
-//     /// set the trace parent.
-//     /// Notes:
-//     /// 1) ClientInfo might contain upstream trace id, so we decide whether to use
-//     /// the default ids after we have received the ClientInfo.
-//     /// 2) There is the opentelemetry_start_trace_probability setting that
-//     /// controls when we start a new trace. It can be changed via Native protocol,
-//     /// so we have to apply the changes first.
-//     query_context->setCurrentQueryId(state.query_id);
+    /// Use the received query id, or generate a random default. It is convenient
+    /// to also generate the default OpenTelemetry trace id at the same time, and
+    /// set the trace parent.
+    /// Notes:
+    /// 1) ClientInfo might contain upstream trace id, so we decide whether to use
+    /// the default ids after we have received the ClientInfo.
+    /// 2) There is the opentelemetry_start_trace_probability setting that
+    /// controls when we start a new trace. It can be changed via Native protocol,
+    /// so we have to apply the changes first.
+    query_context->setCurrentQueryId(state.query_id);
 
-//     /// Disable function name normalization when it's a secondary query, because queries are either
-//     /// already normalized on initiator node, or not normalized and should remain unnormalized for
-//     /// compatibility.
-//     if (query_kind == ClientInfo::QueryKind::SECONDARY_QUERY)
-//     {
-//         query_context->setSetting("normalize_function_names", false);
-//     }
+    /// Disable function name normalization when it's a secondary query, because queries are either
+    /// already normalized on initiator node, or not normalized and should remain unnormalized for
+    /// compatibility.
+    if (query_kind == ClientInfo::QueryKind::SECONDARY_QUERY)
+    {
+        query_context->setSetting("normalize_function_names", false);
+    }
 }
 
 void TCPHandler::receiveUnexpectedQuery()
 {
-    // UInt64 skip_uint_64;
-    // String skip_string;
+    UInt64 skip_uint_64;
+    String skip_string;
 
-    // readStringBinary(skip_string, *in);
+    readStringBinary(skip_string, *in);
 
-    // ClientInfo skip_client_info;
-    // if (client_tcp_protocol_version >= DBMS_MIN_REVISION_WITH_CLIENT_INFO)
-    //     skip_client_info.read(*in, client_tcp_protocol_version);
+    ClientInfo skip_client_info;
+    if (client_tcp_protocol_version >= DBMS_MIN_REVISION_WITH_CLIENT_INFO)
+        skip_client_info.read(*in, client_tcp_protocol_version);
 
-    // Settings skip_settings;
-    // auto settings_format = (client_tcp_protocol_version >= DBMS_MIN_REVISION_WITH_SETTINGS_SERIALIZED_AS_STRINGS) ? SettingsWriteFormat::STRINGS_WITH_FLAGS
-    //                                                                                                   : SettingsWriteFormat::BINARY;
-    // skip_settings.read(*in, settings_format);
+    Settings skip_settings;
+    auto settings_format = (client_tcp_protocol_version >= DBMS_MIN_REVISION_WITH_SETTINGS_SERIALIZED_AS_STRINGS) ? SettingsWriteFormat::STRINGS_WITH_FLAGS
+                                                                                                      : SettingsWriteFormat::BINARY;
+    skip_settings.read(*in, settings_format);
 
-    // std::string skip_hash;
-    // bool interserver_secret = client_tcp_protocol_version >= DBMS_MIN_REVISION_WITH_INTERSERVER_SECRET;
-    // if (interserver_secret)
-    //     readStringBinary(skip_hash, *in, 32);
+    std::string skip_hash;
+    bool interserver_secret = client_tcp_protocol_version >= DBMS_MIN_REVISION_WITH_INTERSERVER_SECRET;
+    if (interserver_secret)
+        readStringBinary(skip_hash, *in, 32);
 
-    // readVarUInt(skip_uint_64, *in);
+    readVarUInt(skip_uint_64, *in);
 
-    // readVarUInt(skip_uint_64, *in);
-    // last_block_in.compression = static_cast<Protocol::Compression>(skip_uint_64);
+    readVarUInt(skip_uint_64, *in);
+    last_block_in.compression = static_cast<Protocol::Compression>(skip_uint_64);
 
-    // readStringBinary(skip_string, *in);
+    readStringBinary(skip_string, *in);
 
     throw NetException("Unexpected packet Query received from client", ErrorCodes::UNEXPECTED_PACKET_FROM_CLIENT);
+}
+
+void TCPHandler::initBlockInput()
+{
+    if (!state.block_in)
+    {
+        /// 'allow_different_codecs' is set to true, because some parts of compressed data can be precompressed in advance
+        /// with another codec that the rest of the data. Example: data sent by Distributed tables.
+
+        if (state.compression == Protocol::Compression::Enable) {
+            std::cout << "CompressedReadBuffer not implemented yet.\n";
+            state.maybe_compressed_in = in;
+            // state.maybe_compressed_in = std::make_shared<CompressedReadBuffer>(*in, /* allow_different_codecs */ true);
+        }
+        else
+            state.maybe_compressed_in = in;
+
+
+        // todo: changed
+        state.block_in = std::make_unique<NativeReader>(
+            *state.maybe_compressed_in,
+            client_tcp_protocol_version);
+    }
+}
+
+bool TCPHandler::receiveData(bool scalar)
+{
+    initBlockInput();
+    LOG_DEBUG(log,  "receiveData not implemented.");
+
+    /// The name of the temporary table for writing data, default to empty string
+    // auto temporary_id = StorageID::createEmpty();
+    // readStringBinary(temporary_id.table_name, *in);
+
+    // /// Read one block from the network and write it down
+    // Block block = state.block_in->read();
+
+    // if (!block)
+    // {
+    //     state.read_all_data = true;
+    //     return false;
+    // }
+
+    // if (scalar)
+    // {
+    //     /// Scalar value
+    //     query_context->addScalar(temporary_id.table_name, block);
+    // }
+    // else if (!state.need_receive_data_for_insert && !state.need_receive_data_for_input)
+    // {
+    //     /// Data for external tables
+
+    //     auto resolved = query_context->tryResolveStorageID(temporary_id, Context::ResolveExternal);
+    //     StoragePtr storage;
+    //     /// If such a table does not exist, create it.
+    //     if (resolved)
+    //     {
+    //         storage = DatabaseCatalog::instance().getTable(resolved, query_context);
+    //     }
+    //     else
+    //     {
+    //         NamesAndTypesList columns = block.getNamesAndTypesList();
+    //         auto temporary_table = TemporaryTableHolder(query_context, ColumnsDescription{columns}, {});
+    //         storage = temporary_table.getTable();
+    //         query_context->addExternalTable(temporary_id.table_name, std::move(temporary_table));
+    //     }
+    //     auto metadata_snapshot = storage->getInMemoryMetadataPtr();
+    //     /// The data will be written directly to the table.
+    //     QueryPipeline temporary_table_out(storage->write(ASTPtr(), metadata_snapshot, query_context));
+    //     PushingPipelineExecutor executor(temporary_table_out);
+    //     executor.start();
+    //     executor.push(block);
+    //     executor.finish();
+    // }
+    // else if (state.need_receive_data_for_input)
+    // {
+    //     /// 'input' table function.
+    //     state.block_for_input = block;
+    // }
+    // else
+    // {
+    //     /// INSERT query.
+    //     state.block_for_insert = block;
+    // }
+    return true;
 }
 
 
@@ -431,6 +555,20 @@ void TCPHandler::receiveUnexpectedHello()
     throw NetException("Unexpected packet Hello received from client", ErrorCodes::UNEXPECTED_PACKET_FROM_CLIENT);
 }
 
+
+void TCPHandler::receiveIgnoredPartUUIDs()
+{
+    readVectorBinary(state.part_uuids_to_ignore.emplace(), *in);
+}
+
+
+void TCPHandler::receiveUnexpectedIgnoredPartUUIDs()
+{
+    std::vector<UUID> skip_part_uuids;
+    readVectorBinary(skip_part_uuids, *in);
+    throw NetException("Unexpected packet IgnoredPartUUIDs received from client", ErrorCodes::UNEXPECTED_PACKET_FROM_CLIENT);
+}
+
 bool TCPHandler::receivePacket()
 {
     UInt64 packet_type = 0;
@@ -439,12 +577,11 @@ bool TCPHandler::receivePacket()
     switch (packet_type)
     {
         case Protocol::Client::IgnoredPartUUIDs:
-            /// Part uuids packet if any comes before query.
-            // if (!state.empty() || state.part_uuids_to_ignore)
-            //     receiveUnexpectedIgnoredPartUUIDs();
-            // receiveIgnoredPartUUIDs();
-            // return true;
-            throw Exception("Unknown packet " + toString(packet_type) + " from client", ErrorCodes::UNKNOWN_PACKET_FROM_CLIENT);
+            // Part uuids packet if any comes before query.
+            if (!state.empty() || state.part_uuids_to_ignore)
+                receiveUnexpectedIgnoredPartUUIDs();
+            receiveIgnoredPartUUIDs();
+            return true;
         case Protocol::Client::Query:
             if (!state.empty()) {
                 receiveUnexpectedQuery();
@@ -459,6 +596,7 @@ bool TCPHandler::receivePacket()
             // if (state.empty())
             //     receiveUnexpectedData(true);
             // return receiveData(packet_type == Protocol::Client::Scalar);
+            LOG_DEBUG(log, "Protocol::Client::Scalar:Data not implemented.");
             throw Exception("Unknown packet " + toString(packet_type) + " from client", ErrorCodes::UNKNOWN_PACKET_FROM_CLIENT);
         case Protocol::Client::Ping:
             writeVarUInt(Protocol::Server::Pong, *out);
@@ -485,6 +623,7 @@ bool TCPHandler::receivePacket()
             // processTablesStatusRequest();
             // out->next();
             // return false;
+            LOG_DEBUG(log, "Protocol::Client::TablesStatusRequest not implemented.");
             throw Exception("Unknown packet " + toString(packet_type) + " from client", ErrorCodes::UNKNOWN_PACKET_FROM_CLIENT);
 
         default:

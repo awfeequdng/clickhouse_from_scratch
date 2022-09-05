@@ -13,6 +13,7 @@
 #include <string_view>
 #include <cassert>
 #include <Common/CurrentThread.h>
+#include <iostream>
 
 namespace std
 {
@@ -267,8 +268,12 @@ bool DNSResolver::updateCacheImpl(UpdateF && update_func, ElemsT && elems, const
         }
     }
 
-    // if (!lost_elems.empty())
+    if (!lost_elems.empty()) {
+
+        std::cout << "[Warning]: " << log_msg << std::endl;
+        // todo: can not print string, only constant expression permit
         // LOG_INFO(log, log_msg, lost_elems);
+    }
 
     return updated;
 }

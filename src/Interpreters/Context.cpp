@@ -233,6 +233,12 @@ Strings Context::getWarnings() const
     return common_warnings;
 }
 
+void Context::setCurrentDatabase(const String & name)
+{
+    auto lock = getLock();
+    current_database = name;
+}
+
 void Context::setPath(const String & path)
 {
     auto lock = getLock();
