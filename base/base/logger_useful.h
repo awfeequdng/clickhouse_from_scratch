@@ -5,6 +5,7 @@
 #include <fmt/format.h>
 #include <Poco/Logger.h>
 #include <Poco/Message.h>
+#include <Common/CurrentThread.h>
 
 namespace
 {

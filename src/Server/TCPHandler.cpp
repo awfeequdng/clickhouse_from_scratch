@@ -273,6 +273,7 @@ void TCPHandler::runImpl()
             state.timeout_setter = std::make_unique<TimeoutSetter>(socket(), receive_timeout, send_timeout);
 
             /// Processing Query
+            // executeQuery(state.query, query_context, false, state.stage);
         }
         catch (const Poco::Net::NetException & e)
         {
