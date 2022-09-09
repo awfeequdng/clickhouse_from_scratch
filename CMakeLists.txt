@@ -115,7 +115,7 @@ include_directories(programs/)
 include_directories(programs/server)
 include_directories(base)
 include_directories(base/daemon)
-include_directories(base/pcg-random)
+include_directories(base/widechar_width)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 
@@ -127,8 +127,6 @@ file(GLOB_RECURSE
         ${PROJECT_SOURCE_DIR}/src/*.h
         ${PROJECT_SOURCE_DIR}/base/*.cpp
         ${PROJECT_SOURCE_DIR}/base/*.h
-        ${PROJECT_SOURCE_DIR}/loggers/*.cpp
-        ${PROJECT_SOURCE_DIR}/loggers/*.h
         )
 
 add_library(cfs
