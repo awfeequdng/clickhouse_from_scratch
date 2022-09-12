@@ -1,8 +1,12 @@
 #pragma once
 
 #include <memory>
+#include <Common/COW.h>
+#include <boost/noncopyable.hpp>
 #include <Core/Names.h>
 #include <Core/TypeId.h>
+#include <DataTypes/DataTypeCustom.h>
+
 
 namespace DB
 {
@@ -45,7 +49,7 @@ using DataTypesWithConstInfo = std::vector<DataTypeWithConstInfo>;
   *
   * DataType is totally immutable object. You can always share them.
   */
-class IDataType : public std::enable_shared_from_this<IDataType>
+class IDataType : private boost::noncopyable, public std::enable_shared_from_this<IDataType>
 {
 public:
     IDataType() = default;

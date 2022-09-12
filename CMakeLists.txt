@@ -3,6 +3,12 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
+# 该选项解决clang不支持operator delete(void*, size_t)的问题
+if (COMPILER_GCC OR COMPILER_CLANG)
+    # Enable C++14 sized global deallocation functions. It should be enabled by setting -std=c++14 but I'm not sure.
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsized-deallocation")
+endif ()
+
 project(clickhouse)
 
 
@@ -14,10 +20,15 @@ message (STATUS "Will build ${VERSION_FULL} revision ${VERSION_REVISION} ${VERSI
 configure_file (src/Common/config.h.in ${CONFIG_COMMON})
 configure_file (src/Common/config_version.h.in ${CONFIG_VERSION})
 configure_file (src/Core/config_core.h.in "${CMAKE_CURRENT_BINARY_DIR}/src/Core/include/config_core.h")
+configure_file (src/Formats/config_formats.h.in "${CMAKE_CURRENT_BINARY_DIR}/src/Formats/config_formats.h")
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/src)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/src/Core/include)
+
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/src/Formats)
 
 include (cmake/target.cmake)
+include (cmake/llvm.cmake)
 
 include(FetchContent)                   # FetchContent_ functions.
 # find_package(PkgConfig REQUIRED)        # pkg_search_module function.
@@ -71,10 +82,8 @@ endfunction()
 # add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/poco)
 link_directories(poco_build/lib)
 
-
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/gtest)
 
-set(CMAKE_CXX_STANDARD 17)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/fmt)
 set(CMAKE_CXX_STANDARD 20)
 
@@ -87,13 +96,19 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/cctz)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/dragonbox)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/magic_enum)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/fast_float)
+# add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/lz4-cmake)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib)
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/contrib/boost)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/contrib/miniselect/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/contrib/pdqsort)
 
 include_directories(contrib/poco/Net/include)
 include_directories(contrib/poco/Foundation/include)
 include_directories(contrib/poco/Util/include)
 
 include_directories(contrib/pcg-random/include)
+
 
 
 set(CMAKE_BUILD_TYPE Release)
@@ -117,7 +132,7 @@ include_directories(base)
 include_directories(base/daemon)
 include_directories(base/widechar_width)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
-
+SET (CMAKE_CXX_STANDARD 20)
 
 # Get the list of all pxtidb sources.
 file(GLOB_RECURSE
@@ -145,6 +160,7 @@ target_link_libraries(cfs
   magic_enum
   fast_float
   ${CMAKE_DL_LIBS}
+  lz4
 )
 
 add_executable(clickhouse

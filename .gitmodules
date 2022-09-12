@@ -28,3 +28,18 @@
 [submodule "contrib/fast_float"]
 	path = contrib/fast_float
 	url = https://github.com/fastfloat/fast_float
+[submodule "contrib/boost"]
+	path = contrib/boost
+	url = https://github.com/ClickHouse/boost.git
+[submodule "contrib/miniselect"]
+	path = contrib/miniselect
+	url = https://github.com/danlark1/miniselect
+[submodule "contrib/pdqsort"]
+	path = contrib/pdqsort
+	url = https://github.com/orlp/pdqsort.git
+[submodule "contrib/lz4"]
+	path = contrib/lz4
+	url = https://github.com/lz4/lz4.git
+[submodule "contrib/llvm"]
+	path = contrib/llvm
+	url = https://github.com/ClickHouse-Extras/llvm
