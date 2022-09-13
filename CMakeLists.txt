@@ -2,6 +2,8 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.15.3)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(CMAKE_BUILD_TYPE Release)
+
 project(clickhouse)
 # 该选项解决clang不支持operator delete(void*, size_t)的问题
 # if (COMPILER_GCC OR COMPILER_CLANG)
@@ -91,8 +93,9 @@ endfunction()
 # add_cfs_dep(fmt https://github.com/fmtlib/fmt.git 9.0.0)
 # add_cfs_dep(gtest https://github.com/google/googletest.git release-1.10.0)
 
-# add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/poco)
-link_directories(poco_build/lib)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/poco)
+# link_directories(${CMAKE_CURRENT_BINARY_DIR}/lib)
+# link_directories(poco_build/lib)
 
 #add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/gtest)
 
@@ -122,14 +125,6 @@ include_directories(contrib/poco/Util/include)
 
 include_directories(contrib/pcg-random/include)
 
-
-
-set(CMAKE_BUILD_TYPE Release)
-
-
-SET (CMAKE_CXX_STANDARD 20)
-
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++2a")
 
 # include generated files in project environment
 include_directories(
@@ -162,9 +157,9 @@ add_library(cfs SHARED
 )
 target_link_libraries(cfs
   PUBLIC
-  PocoNet
-  PocoFoundation
-  PocoUtil
+  Poco::Net
+  Poco::Foundation
+  Poco::Util
   fmt
   replxx
   double-conversion
