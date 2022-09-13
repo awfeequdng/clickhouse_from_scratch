@@ -1,5 +1,4 @@
 #include <DataTypes/EnumValues.h>
-#include <boost/algorithm/string.hpp>
 
 namespace DB
 {
@@ -83,12 +82,22 @@ Names EnumValues<T>::getAllRegisteredNames() const
     return result;
 }
 
+std::string str_to_lower(std::string s) {
+    std::transform(s.begin(), s.end(), s.begin(),
+                // static_cast<int(*)(int)>(std::tolower)         // wrong
+                // [](int c){ return std::tolower(c); }           // wrong
+                // [](char c){ return std::tolower(c); }          // wrong
+                   [](unsigned char c){ return std::tolower(c); } // correct
+                  );
+    return s;
+}
+
 template <typename T>
 std::unordered_set<String> EnumValues<T>::getSetOfAllNames(bool to_lower) const
 {
     std::unordered_set<String> result;
     for (const auto & value : values)
-        result.insert(to_lower ? boost::algorithm::to_lower_copy(value.first) : value.first);
+        result.insert(to_lower ? str_to_lower(value.first) : value.first);
     return result;
 }
 

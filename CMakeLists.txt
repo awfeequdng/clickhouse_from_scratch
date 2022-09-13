@@ -4,16 +4,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 project(clickhouse)
 # 该选项解决clang不支持operator delete(void*, size_t)的问题
-if (COMPILER_GCC OR COMPILER_CLANG)
-    # Enable C++14 sized global deallocation functions. It should be enabled by setting -std=c++14 but I'm not sure.
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsized-deallocation")
-endif ()
+# if (COMPILER_GCC OR COMPILER_CLANG)
+#     # Enable C++14 sized global deallocation functions. It should be enabled by setting -std=c++14 but I'm not sure.
+# endif ()
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsized-deallocation")
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL Clang)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I/home/pxcai/opt/llvm/include")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I/home/pxcai/opt/llvm/include/c++/v1")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -isysroot /home/pxcai/opt/llvm/include/c++/v1")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I~/opt/llvm/include")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I~/opt/llvm/include/c++/v1")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -isysroot ~/opt/llvm/include/c++/v1")
     MESSAGE(STATUS "--------------------- CMAKE CXX FLAGS : ${CMAKE_CXX_FLAGS}")
 endif ()
 
@@ -155,7 +155,7 @@ file(GLOB_RECURSE
         ${PROJECT_SOURCE_DIR}/base/*.h
         )
 
-add_library(cfs
+add_library(cfs SHARED
   ${CFS_SRCS}
 )
 target_link_libraries(cfs
@@ -181,7 +181,7 @@ add_executable(clickhouse
 )
 
 target_link_libraries(clickhouse
-  PRIVATE
+  PUBLIC
   cfs
 )
 
