@@ -51,12 +51,12 @@ bool ParserQueryWithOutput::parseImpl(Pos & pos, ASTPtr & node, Expected & expec
 
     if (s_format.ignore(pos, expected))
     {
-        ParserIdentifier format_p;
-
-        if (!format_p.parse(pos, query_with_output.format, expected))
-            return false;
-        // setIdentifierSpecial(query_with_output.format);
         std::cout << "setIdentifierSpecial(query_with_output.format); not implemented yet." << std::endl;
+        // ParserIdentifier format_p;
+
+        // if (!format_p.parse(pos, query_with_output.format, expected))
+        //     return false;
+        // setIdentifierSpecial(query_with_output.format);
 
         query_with_output.children.push_back(query_with_output.format);
     }

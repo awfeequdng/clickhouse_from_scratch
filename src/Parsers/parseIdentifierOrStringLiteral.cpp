@@ -12,14 +12,14 @@ bool parseIdentifierOrStringLiteral(IParser::Pos & pos, Expected & expected, Str
 {
     return IParserBase::wrapParseImpl(pos, [&]
     {
+        std::cout << "ParserIdentifier().parse(pos, ast, expected) not implemented yet." << std::endl;
         ASTPtr ast;
-        if (ParserIdentifier().parse(pos, ast, expected))
-        {
-            // result = getIdentifierName(ast);
-            std::cout << "result = getIdentifierName(ast); not implemented yet." << std::endl;
-            result = "not implement result";
-            return true;
-        }
+        // if (ParserIdentifier().parse(pos, ast, expected))
+        // {
+        //     result = getIdentifierName(ast);
+        //     result = "not implement result";
+        //     return true;
+        // }
 
         if (ParserStringLiteral().parse(pos, ast, expected))
         {

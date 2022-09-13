@@ -341,14 +341,15 @@ const char * ParserAlias::restricted_keywords[] =
 bool ParserAlias::parseImpl(Pos & pos, ASTPtr & node, Expected & expected)
 {
     ParserKeyword s_as("AS");
-    ParserIdentifier id_p;
+    // ParserIdentifier id_p;
 
     bool has_as_word = s_as.ignore(pos, expected);
     if (!allow_alias_without_as_keyword && !has_as_word)
         return false;
 
-    if (!id_p.parse(pos, node, expected))
-        return false;
+    std::cout << "not implemented: id_p.parse(pos, node, expected)" << std::endl;
+    // if (!id_p.parse(pos, node, expected))
+    //     return false;
 
     if (!has_as_word)
     {
@@ -372,19 +373,20 @@ bool ParserAlias::parseImpl(Pos & pos, ASTPtr & node, Expected & expected)
 
 bool ParserAsterisk::parseImpl(Pos & pos, ASTPtr & node, Expected & expected)
 {
-    if (pos->type == TokenType::Asterisk)
-    {
-        ++pos;
-        auto asterisk = std::make_shared<ASTAsterisk>();
-        ParserColumnsTransformers transformers_p(allowed_transformers);
-        ASTPtr transformer;
-        while (transformers_p.parse(pos, transformer, expected))
-        {
-            asterisk->children.push_back(transformer);
-        }
-        node = asterisk;
-        return true;
-    }
+    std::cout << "not implemented: ParserAsterisk::parseImpl" << std::endl;
+    // if (pos->type == TokenType::Asterisk)
+    // {
+    //     ++pos;
+    //     auto asterisk = std::make_shared<ASTAsterisk>();
+    //     ParserColumnsTransformers transformers_p(allowed_transformers);
+    //     ASTPtr transformer;
+    //     while (transformers_p.parse(pos, transformer, expected))
+    //     {
+    //         asterisk->children.push_back(transformer);
+    //     }
+    //     node = asterisk;
+    //     return true;
+    // }
     return false;
 }
 

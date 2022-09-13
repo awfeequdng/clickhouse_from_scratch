@@ -178,9 +178,10 @@ static void logQuery(const String & query, ContextPtr context, bool internal)
 
         if (client_info.client_trace_context.trace_id != UUID())
         {
-            LOG_TRACE(&Poco::Logger::get("executeQuery"),
-                "OpenTelemetry traceparent '{}'",
-                client_info.client_trace_context.composeTraceparentHeader());
+            std::cout << "NOT IMPLEMENTED: line: " << __LINE__ << std::endl;
+            // LOG_TRACE(&Poco::Logger::get("executeQuery"),
+            //     "OpenTelemetry traceparent '{}'",
+            //     client_info.client_trace_context.composeTraceparentHeader());
         }
     }
 }

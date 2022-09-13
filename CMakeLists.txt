@@ -169,6 +169,7 @@ target_link_libraries(cfs
   fast_float
   ${CMAKE_DL_LIBS}
   lz4
+  cityhash
   boost::headers_only
 )
 
