@@ -1,6 +1,6 @@
 #include "OwnSplitChannel.h"
 #include "OwnFormattingChannel.h"
-
+#include <unistd.h>
 #include <iostream>
 #include <IO/WriteBufferFromFileDescriptor.h>
 #include <sys/time.h>

@@ -14,7 +14,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <linux/taskstats.h>
-
+#include <unistd.h>
 
 namespace DB
 {

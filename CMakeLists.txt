@@ -2,15 +2,25 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.15.3)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-
+project(clickhouse)
 # 该选项解决clang不支持operator delete(void*, size_t)的问题
 if (COMPILER_GCC OR COMPILER_CLANG)
     # Enable C++14 sized global deallocation functions. It should be enabled by setting -std=c++14 but I'm not sure.
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsized-deallocation")
 endif ()
 
-project(clickhouse)
+if (CMAKE_CXX_COMPILER_ID STREQUAL Clang)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I/home/pxcai/opt/llvm/include")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I/home/pxcai/opt/llvm/include/c++/v1")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -isysroot /home/pxcai/opt/llvm/include/c++/v1")
+    MESSAGE(STATUS "--------------------- CMAKE CXX FLAGS : ${CMAKE_CXX_FLAGS}")
+endif ()
 
+message("Compiler Version: ${CMAKE_CXX_COMPILER_VERSION}")
+message("Compiler ID: ${CMAKE_CXX_COMPILER_ID}")
+message("Compiler ID: ${COMPILER_CLANG}")
+message("Compiler ID: ${COMPILER_GCC}")
 
 set (CONFIG_VERSION "${CMAKE_CURRENT_BINARY_DIR}/src/Common/config_version.h")
 set (CONFIG_COMMON "${CMAKE_CURRENT_BINARY_DIR}/src/Common/config.h")
@@ -82,7 +92,7 @@ endfunction()
 # add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/poco)
 link_directories(poco_build/lib)
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/gtest)
+#add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/gtest)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/fmt)
 set(CMAKE_CXX_STANDARD 20)
@@ -99,7 +109,8 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/fast_float)
 # add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/lz4-cmake)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/contrib/boost)
+# include_directories(${CMAKE_CURRENT_SOURCE_DIR}/contrib/boost)
+
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/contrib/miniselect/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/contrib/pdqsort)
 
@@ -161,6 +172,7 @@ target_link_libraries(cfs
   fast_float
   ${CMAKE_DL_LIBS}
   lz4
+  boost::headers_only
 )
 
 add_executable(clickhouse

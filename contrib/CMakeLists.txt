@@ -7,4 +7,4 @@ set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -w")
 set_property(DIRECTORY PROPERTY EXCLUDE_FROM_ALL 1)
 
 add_subdirectory (lz4-cmake)
-
+add_subdirectory (boost-cmake)

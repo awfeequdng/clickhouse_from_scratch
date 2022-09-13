@@ -6,7 +6,7 @@
 #include "ExtendedLogChannel.h"
 #include <unordered_map>
 #include <map>
-
+#include <mutex>
 namespace DB
 {
 /// Works as Poco::SplitterChannel, but performs additional work:
