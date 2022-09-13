@@ -202,9 +202,9 @@ Poco::Net::SocketAddress Server::socketBindListen(Poco::Net::ServerSocket & sock
 }
 
 std::map<std::string, int> port_name_map = {
-    {"tcp_port", 9000},
-    {"http_port", 9001},
-    {"mysql_port", 9002},
+    {"tcp_port", 19000},
+    {"http_port", 19001},
+    {"mysql_port", 19002},
 };
 
 void Server::createServer(const std::string & listen_host, std::string port_name, bool listen_try, CreateServerFunc && func) const
