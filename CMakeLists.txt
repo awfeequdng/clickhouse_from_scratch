@@ -17,6 +17,8 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL Clang)
     MESSAGE(STATUS "--------------------- CMAKE CXX FLAGS : ${CMAKE_CXX_FLAGS}")
 endif ()
 
+option(BUILD_SHARED_LIBS "Build shared libraries (.dll/.so) instead of static ones (.lib/.a)" ON)
+
 message("Compiler Version: ${CMAKE_CXX_COMPILER_VERSION}")
 message("Compiler ID: ${CMAKE_CXX_COMPILER_ID}")
 message("Compiler ID: ${COMPILER_CLANG}")
