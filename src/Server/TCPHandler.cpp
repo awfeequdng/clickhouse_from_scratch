@@ -592,11 +592,13 @@ bool TCPHandler::receivePacket()
 
         case Protocol::Client::Data:
         case Protocol::Client::Scalar:
-            if (state.skipping_data)
-                return receiveUnexpectedData(false);
-            if (state.empty())
-                receiveUnexpectedData(true);
-            return receiveData(packet_type == Protocol::Client::Scalar);
+            // if (state.skipping_data)
+            //     return receiveUnexpectedData(false);
+            // if (state.empty())
+            //     receiveUnexpectedData(true);
+            // return receiveData(packet_type == Protocol::Client::Scalar);
+            LOG_DEBUG(log, "Protocol::Client::Scalar:Data not implemented.");
+            throw Exception("Unknown packet " + toString(packet_type) + " from client", ErrorCodes::UNKNOWN_PACKET_FROM_CLIENT);
         case Protocol::Client::Ping:
             writeVarUInt(Protocol::Server::Pong, *out);
             out->next();

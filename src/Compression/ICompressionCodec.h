@@ -1,11 +1,12 @@
 #pragma once
 
 #include <memory>
+#include <boost/noncopyable.hpp>
 #include <Compression/CompressionInfo.h>
 #include <base/types.h>
-// #include <Parsers/IAST.h>
+#include <Parsers/IAST.h>
 #include <Common/SipHash.h>
-#include <vector>
+
 
 namespace DB
 {
@@ -15,12 +16,14 @@ class ICompressionCodec;
 using CompressionCodecPtr = std::shared_ptr<ICompressionCodec>;
 using Codecs = std::vector<CompressionCodecPtr>;
 
+class IDataType;
+
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t * data, size_t size);
 
 /**
 * Represents interface for compression codecs like LZ4, ZSTD, etc.
 */
-class ICompressionCodec
+class ICompressionCodec : private boost::noncopyable
 {
 public:
     virtual ~ICompressionCodec() = default;
@@ -29,11 +32,11 @@ public:
     virtual uint8_t getMethodByte() const = 0;
 
     /// Codec description, for example "ZSTD(2)" or "LZ4,LZ4HC(5)"
-    // virtual ASTPtr getCodecDesc() const;
+    virtual ASTPtr getCodecDesc() const;
 
     /// Codec description with "CODEC" prefix, for example "CODEC(ZSTD(2))" or
     /// "CODEC(LZ4,LZ4HC(5))"
-    // ASTPtr getFullCodecDesc() const;
+    ASTPtr getFullCodecDesc() const;
 
     /// Hash, that depends on codec ast and optional parameters like data type
     virtual void updateHash(SipHash & hash) const = 0;
@@ -96,10 +99,10 @@ protected:
     virtual void doDecompressData(const char * source, UInt32 source_size, char * dest, UInt32 uncompressed_size) const = 0;
 
     /// Construct and set codec description from codec name and arguments. Must be called in codec constructor.
-    // void setCodecDescription(const String & name, const ASTs & arguments = {});
+    void setCodecDescription(const String & name, const ASTs & arguments = {});
 
 private:
-    // ASTPtr full_codec_desc;
+    ASTPtr full_codec_desc;
 };
 
 }
