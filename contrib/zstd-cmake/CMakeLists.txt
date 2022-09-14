@@ -77,6 +77,7 @@ SET(Sources
         "${LIBRARY_DIR}/decompress/zstd_ddict.c"
         "${LIBRARY_DIR}/decompress/zstd_decompress_block.c"
         "${LIBRARY_DIR}/decompress/zstd_decompress.c"
+        "${LIBRARY_DIR}/decompress/huf_decompress_amd64.S"
         "${LIBRARY_DIR}/dictBuilder/cover.c"
         "${LIBRARY_DIR}/dictBuilder/divsufsort.c"
         "${LIBRARY_DIR}/dictBuilder/fastcover.c"

@@ -16,7 +16,7 @@ endif()
 if (USE_INTERNAL_ZSTD_LIBRARY)
     add_subdirectory (zstd-cmake)
 endif ()
-# add_subdirectory (zstd-cmake)
+add_subdirectory (zstd-cmake)
 
 # if (USE_INTERNAL_BROTLI_LIBRARY)
 #     add_subdirectory(brotli-cmake)
