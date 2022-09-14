@@ -43,3 +43,18 @@
 [submodule "contrib/llvm"]
 	path = contrib/llvm
 	url = https://github.com/ClickHouse-Extras/llvm
+[submodule "contrib/bzip2"]
+	path = contrib/bzip2
+	url = https://github.com/ClickHouse-Extras/bzip2.git
+[submodule "contrib/brotli"]
+	path = contrib/brotli
+	url = https://github.com/google/brotli.git
+[submodule "contrib/zstd"]
+	path = contrib/zstd
+	url = https://github.com/facebook/zstd.git
+[submodule "contrib/zlib-ng"]
+	path = contrib/zlib-ng
+	url = https://github.com/ClickHouse-Extras/zlib-ng.git
+[submodule "contrib/xz"]
+	path = contrib/xz
+	url = https://github.com/xz-mirror/xz

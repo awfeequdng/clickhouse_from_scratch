@@ -36,6 +36,9 @@ configure_file (src/Common/config_version.h.in ${CONFIG_VERSION})
 configure_file (src/Core/config_core.h.in "${CMAKE_CURRENT_BINARY_DIR}/src/Core/include/config_core.h")
 configure_file (src/Formats/config_formats.h.in "${CMAKE_CURRENT_BINARY_DIR}/src/Formats/config_formats.h")
 
+option (USE_BZIP2 "Use bzip2 library" ON)
+
+
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/src)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/src/Core/include)
 
@@ -169,9 +172,17 @@ target_link_libraries(cfs
   fast_float
   ${CMAKE_DL_LIBS}
   lz4
+  zstd
+  liblzma
   cityhash
   boost::headers_only
 )
+
+if (USE_BZIP2)
+target_link_libraries(cfs
+    PUBLIC
+    bzip2)
+endif()
 
 add_executable(clickhouse
   programs/main.cpp
