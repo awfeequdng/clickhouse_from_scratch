@@ -1,4 +1,8 @@
 option (USE_INTERNAL_LZ4_LIBRARY "Use internal lz4 library" ${NOT_UNBUNDLED})
+# message ("USE_INTERNAL_LZ4_LIBRARY ${USE_INTERNAL_LZ4_LIBRARY} ${NOT_UNBUNDLED}==============================================================")
+# todo: 此处为什么没有将USE_INTERNAL_LZ4_LIBRARY设置成NOT_UNBUNDLED的值
+set(USE_INTERNAL_LZ4_LIBRARY ${NOT_UNBUNDLED})
+message ("USE_INTERNAL_LZ4_LIBRARY ${USE_INTERNAL_LZ4_LIBRARY} ${NOT_UNBUNDLED}==============================================================")
 
 if (NOT USE_INTERNAL_LZ4_LIBRARY)
     find_library (LIBRARY_LZ4 lz4)

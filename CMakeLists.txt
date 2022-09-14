@@ -60,7 +60,7 @@ if (UNBUNDLED)
 else ()
     set(NOT_UNBUNDLED ON)
 endif ()
-
+message ("NOT_UNBUNDLED: ${NOT_UNBUNDLED}---------------------------------------------------")
 include (cmake/zstd.cmake)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/src)
@@ -138,7 +138,8 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/cctz)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/dragonbox)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/magic_enum)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/fast_float)
-# add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/lz4-cmake)
+
+
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib)
 
 # include_directories(${CMAKE_CURRENT_SOURCE_DIR}/contrib/boost)
