@@ -1,6 +1,7 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.15.3)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+enable_language( C CXX ASM )
 
 set(CMAKE_BUILD_TYPE Release)
 
@@ -10,6 +11,9 @@ project(clickhouse)
 #     # Enable C++14 sized global deallocation functions. It should be enabled by setting -std=c++14 but I'm not sure.
 # endif ()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsized-deallocation")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wattributes")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=deprecated-declarations -Wno-deprecated-declarations")
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL Clang)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
@@ -20,6 +24,12 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL Clang)
 endif ()
 
 option(BUILD_SHARED_LIBS "Build shared libraries (.dll/.so) instead of static ones (.lib/.a)" ON)
+
+# 解决zstd.h中deprecated报错的问题
+add_definitions(-DZSTD_DISABLE_DEPRECATE_WARNINGS)
+
+include (cmake/add_warning.cmake)
+include (cmake/warnings.cmake)
 
 message("Compiler Version: ${CMAKE_CXX_COMPILER_VERSION}")
 message("Compiler ID: ${CMAKE_CXX_COMPILER_ID}")
@@ -36,8 +46,22 @@ configure_file (src/Common/config_version.h.in ${CONFIG_VERSION})
 configure_file (src/Core/config_core.h.in "${CMAKE_CURRENT_BINARY_DIR}/src/Core/include/config_core.h")
 configure_file (src/Formats/config_formats.h.in "${CMAKE_CURRENT_BINARY_DIR}/src/Formats/config_formats.h")
 
-option (USE_BZIP2 "Use bzip2 library" ON)
+# option (USE_BZIP2 "Use bzip2 library" ON)
 
+# We recommend avoiding this mode for production builds because we can't guarantee
+# all needed libraries exist in your system.
+# This mode exists for enthusiastic developers who are searching for trouble.
+# The whole idea of using unknown version of libraries from the OS distribution is deeply flawed.
+# Useful for maintainers of OS packages.
+option (UNBUNDLED "Use system libraries instead of ones in contrib/" OFF)
+
+if (UNBUNDLED)
+    set(NOT_UNBUNDLED OFF)
+else ()
+    set(NOT_UNBUNDLED ON)
+endif ()
+
+include (cmake/zstd.cmake)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/src)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/src/Core/include)
