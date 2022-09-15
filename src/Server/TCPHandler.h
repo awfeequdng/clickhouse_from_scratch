@@ -36,6 +36,8 @@ struct QueryState
     /// Where to write result data.
     std::shared_ptr<WriteBuffer> maybe_compressed_out;
     std::unique_ptr<NativeWriter> block_out;
+    Block block_for_insert;
+
     /// Query text.
     String query;
 
@@ -58,6 +60,9 @@ struct QueryState
     /// Request requires data from client for function input()
     bool need_receive_data_for_input = false;
     /// temporary place for incoming data block for input()
+    Block block_for_input;
+    /// sample block from StorageInput
+    Block input_header;
 
     /// If true, the data packets will be skipped instead of reading. Used to recover after errors.
     bool skipping_data = false;

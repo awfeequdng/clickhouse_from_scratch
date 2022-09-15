@@ -16,6 +16,8 @@
 #include <IO/WriteHelpers.h>
 #include <IO/ReadBufferFromPocoSocket.h>
 #include <IO/WriteBufferFromPocoSocket.h>
+#include <Compression/CompressedReadBuffer.h>
+#include <Compression/CompressedWriteBuffer.h>
 #include <Common/CurrentThread.h>
 #include <Common/setThreadName.h>
 #include <Common/Stopwatch.h>
@@ -23,6 +25,7 @@
 #include "TCPHandler.h"
 #include <base/scope_guard.h>
 #include <Interpreters/Session.h>
+#include <Interpreters/StorageID.h>
 
 #include "Interpreters/Context.h"
 #include "Interpreters/ClientInfo.h"
@@ -462,9 +465,9 @@ void TCPHandler::initBlockInput()
         /// with another codec that the rest of the data. Example: data sent by Distributed tables.
 
         if (state.compression == Protocol::Compression::Enable) {
-            std::cout << "CompressedReadBuffer not implemented yet.\n";
+            std::cout << "CompressedReadBuffer implemented.\n";
             state.maybe_compressed_in = in;
-            // state.maybe_compressed_in = std::make_shared<CompressedReadBuffer>(*in, /* allow_different_codecs */ true);
+            state.maybe_compressed_in = std::make_shared<CompressedReadBuffer>(*in, /* allow_different_codecs */ true);
         }
         else
             state.maybe_compressed_in = in;
@@ -480,62 +483,63 @@ void TCPHandler::initBlockInput()
 bool TCPHandler::receiveData(bool scalar)
 {
     initBlockInput();
-    LOG_DEBUG(log,  "receiveData not implemented.");
+    LOG_DEBUG(log,  "receiveData");
 
     /// The name of the temporary table for writing data, default to empty string
-    // auto temporary_id = StorageID::createEmpty();
-    // readStringBinary(temporary_id.table_name, *in);
+    auto temporary_id = StorageID::createEmpty();
+    readStringBinary(temporary_id.table_name, *in);
 
-    // /// Read one block from the network and write it down
-    // Block block = state.block_in->read();
+    /// Read one block from the network and write it down
+    Block block = state.block_in->read();
 
-    // if (!block)
-    // {
-    //     state.read_all_data = true;
-    //     return false;
-    // }
+    if (!block)
+    {
+        state.read_all_data = true;
+        return false;
+    }
 
-    // if (scalar)
-    // {
-    //     /// Scalar value
-    //     query_context->addScalar(temporary_id.table_name, block);
-    // }
-    // else if (!state.need_receive_data_for_insert && !state.need_receive_data_for_input)
-    // {
-    //     /// Data for external tables
-
-    //     auto resolved = query_context->tryResolveStorageID(temporary_id, Context::ResolveExternal);
-    //     StoragePtr storage;
-    //     /// If such a table does not exist, create it.
-    //     if (resolved)
-    //     {
-    //         storage = DatabaseCatalog::instance().getTable(resolved, query_context);
-    //     }
-    //     else
-    //     {
-    //         NamesAndTypesList columns = block.getNamesAndTypesList();
-    //         auto temporary_table = TemporaryTableHolder(query_context, ColumnsDescription{columns}, {});
-    //         storage = temporary_table.getTable();
-    //         query_context->addExternalTable(temporary_id.table_name, std::move(temporary_table));
-    //     }
-    //     auto metadata_snapshot = storage->getInMemoryMetadataPtr();
-    //     /// The data will be written directly to the table.
-    //     QueryPipeline temporary_table_out(storage->write(ASTPtr(), metadata_snapshot, query_context));
-    //     PushingPipelineExecutor executor(temporary_table_out);
-    //     executor.start();
-    //     executor.push(block);
-    //     executor.finish();
-    // }
-    // else if (state.need_receive_data_for_input)
-    // {
-    //     /// 'input' table function.
-    //     state.block_for_input = block;
-    // }
-    // else
-    // {
-    //     /// INSERT query.
-    //     state.block_for_insert = block;
-    // }
+    if (scalar)
+    {
+        /// Scalar value
+        // query_context->addScalar(temporary_id.table_name, block);
+        LOG_DEBUG(log, "query_context->addScalar( not implemented");
+    }
+    else if (!state.need_receive_data_for_insert && !state.need_receive_data_for_input)
+    {
+        /// Data for external tables
+        LOG_DEBUG(log, "Data for external tables not implemented");
+        // auto resolved = query_context->tryResolveStorageID(temporary_id, Context::ResolveExternal);
+        // StoragePtr storage;
+        // /// If such a table does not exist, create it.
+        // if (resolved)
+        // {
+        //     storage = DatabaseCatalog::instance().getTable(resolved, query_context);
+        // }
+        // else
+        // {
+        //     NamesAndTypesList columns = block.getNamesAndTypesList();
+        //     auto temporary_table = TemporaryTableHolder(query_context, ColumnsDescription{columns}, {});
+        //     storage = temporary_table.getTable();
+        //     query_context->addExternalTable(temporary_id.table_name, std::move(temporary_table));
+        // }
+        // auto metadata_snapshot = storage->getInMemoryMetadataPtr();
+        // /// The data will be written directly to the table.
+        // QueryPipeline temporary_table_out(storage->write(ASTPtr(), metadata_snapshot, query_context));
+        // PushingPipelineExecutor executor(temporary_table_out);
+        // executor.start();
+        // executor.push(block);
+        // executor.finish();
+    }
+    else if (state.need_receive_data_for_input)
+    {
+        /// 'input' table function.
+        state.block_for_input = block;
+    }
+    else
+    {
+        /// INSERT query.
+        state.block_for_insert = block;
+    }
     return true;
 }
 
@@ -570,67 +574,28 @@ void TCPHandler::receiveUnexpectedIgnoredPartUUIDs()
     throw NetException("Unexpected packet IgnoredPartUUIDs received from client", ErrorCodes::UNEXPECTED_PACKET_FROM_CLIENT);
 }
 
+bool TCPHandler::receiveUnexpectedData(bool throw_exception)
+{
+    String skip_external_table_name;
+    readStringBinary(skip_external_table_name, *in);
 
-// bool TCPHandler::receiveData(bool scalar)
-// {
-//     initBlockInput();
+    std::shared_ptr<ReadBuffer> maybe_compressed_in;
+    if (last_block_in.compression == Protocol::Compression::Enable)
+        maybe_compressed_in = std::make_shared<CompressedReadBuffer>(*in, /* allow_different_codecs */ true);
+    else
+        maybe_compressed_in = in;
 
-//     /// The name of the temporary table for writing data, default to empty string
-//     auto temporary_id = StorageID::createEmpty();
-//     readStringBinary(temporary_id.table_name, *in);
+    auto skip_block_in = std::make_shared<NativeReader>(*maybe_compressed_in, client_tcp_protocol_version);
+    bool read_ok = skip_block_in->read();
 
-//     /// Read one block from the network and write it down
-//     Block block = state.block_in->read();
+    if (!read_ok)
+        state.read_all_data = true;
 
-//     if (!block)
-//     {
-//         state.read_all_data = true;
-//         return false;
-//     }
+    if (throw_exception)
+        throw NetException("Unexpected packet Data received from client", ErrorCodes::UNEXPECTED_PACKET_FROM_CLIENT);
 
-//     if (scalar)
-//     {
-//         /// Scalar value
-//         query_context->addScalar(temporary_id.table_name, block);
-//     }
-//     else if (!state.need_receive_data_for_insert && !state.need_receive_data_for_input)
-//     {
-//         /// Data for external tables
-
-//         auto resolved = query_context->tryResolveStorageID(temporary_id, Context::ResolveExternal);
-//         StoragePtr storage;
-//         /// If such a table does not exist, create it.
-//         if (resolved)
-//         {
-//             storage = DatabaseCatalog::instance().getTable(resolved, query_context);
-//         }
-//         else
-//         {
-//             NamesAndTypesList columns = block.getNamesAndTypesList();
-//             auto temporary_table = TemporaryTableHolder(query_context, ColumnsDescription{columns}, {});
-//             storage = temporary_table.getTable();
-//             query_context->addExternalTable(temporary_id.table_name, std::move(temporary_table));
-//         }
-//         auto metadata_snapshot = storage->getInMemoryMetadataPtr();
-//         /// The data will be written directly to the table.
-//         QueryPipeline temporary_table_out(storage->write(ASTPtr(), metadata_snapshot, query_context));
-//         PushingPipelineExecutor executor(temporary_table_out);
-//         executor.start();
-//         executor.push(block);
-//         executor.finish();
-//     }
-//     else if (state.need_receive_data_for_input)
-//     {
-//         /// 'input' table function.
-//         state.block_for_input = block;
-//     }
-//     else
-//     {
-//         /// INSERT query.
-//         state.block_for_insert = block;
-//     }
-//     return true;
-// }
+    return read_ok;
+}
 
 bool TCPHandler::receivePacket()
 {
@@ -654,13 +619,11 @@ bool TCPHandler::receivePacket()
 
         case Protocol::Client::Data:
         case Protocol::Client::Scalar:
-            // if (state.skipping_data)
-            //     return receiveUnexpectedData(false);
-            // if (state.empty())
-            //     receiveUnexpectedData(true);
-            // return receiveData(packet_type == Protocol::Client::Scalar);
-            LOG_DEBUG(log, "Protocol::Client::Scalar:Data not implemented.");
-            throw Exception("Unknown packet " + toString(packet_type) + " from client", ErrorCodes::UNKNOWN_PACKET_FROM_CLIENT);
+            if (state.skipping_data)
+                return receiveUnexpectedData(false);
+            if (state.empty())
+                receiveUnexpectedData(true);
+            return receiveData(packet_type == Protocol::Client::Scalar);
         case Protocol::Client::Ping:
             writeVarUInt(Protocol::Server::Pong, *out);
             out->next();
