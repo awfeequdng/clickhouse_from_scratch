@@ -7,7 +7,7 @@
 #include <iterator>
 #include <concepts>
 
-#include <pcg_random.hpp>
+#include <pcg-random/pcg_random.hpp>
 
 #include <base/DateLUT.h>
 #include <base/LocalDate.h>
@@ -25,7 +25,7 @@
 #include <Common/StringUtils/StringUtils.h>
 #include <Common/NaNUtils.h>
 
-// #include <IO/CompressionMethod.h>
+#include <IO/CompressionMethod.h>
 #include <IO/WriteBuffer.h>
 #include <IO/WriteIntText.h>
 #include <IO/VarInt.h>
@@ -1151,13 +1151,11 @@ struct PcgSerializer
 {
     static void serializePcg32(const pcg32_fast & rng, WriteBuffer & buf)
     {
-        std::cout << "not implement serializePcg32 yet" << std::endl;
-        exit(-1);
-        // writeText(rng.multiplier(), buf);
-        // writeChar(' ', buf);
-        // writeText(rng.increment(), buf);
-        // writeChar(' ', buf);
-        // writeText(rng.state_, buf);
+        writeText(rng.multiplier(), buf);
+        writeChar(' ', buf);
+        writeText(rng.increment(), buf);
+        writeChar(' ', buf);
+        writeText(rng.state_, buf);
     }
 };
 

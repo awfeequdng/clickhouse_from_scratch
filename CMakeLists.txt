@@ -151,7 +151,7 @@ include_directories(contrib/poco/Net/include)
 include_directories(contrib/poco/Foundation/include)
 include_directories(contrib/poco/Util/include)
 
-include_directories(contrib/pcg-random/include)
+# include_directories(contrib/pcg-random/include)
 
 
 # include generated files in project environment
@@ -165,6 +165,7 @@ include_directories(src/)
 include_directories(programs/)
 include_directories(programs/server)
 include_directories(base)
+include_directories(base/pcg-random)
 include_directories(base/daemon)
 include_directories(base/widechar_width)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})

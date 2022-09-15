@@ -1,6 +1,8 @@
 #pragma once
 
 #include <sys/types.h>
+#include <boost/noncopyable.hpp>
+
 
 #if defined(__linux__)
 struct taskstats;
@@ -8,7 +10,7 @@ struct taskstats;
 namespace DB
 {
 /// Provides several essential per-task metrics by reading data from Procfs (when available).
-class ProcfsMetricsProvider
+class ProcfsMetricsProvider : private boost::noncopyable
 {
 public:
     ProcfsMetricsProvider(const pid_t /*tid*/);

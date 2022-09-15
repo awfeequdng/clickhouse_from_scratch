@@ -570,6 +570,68 @@ void TCPHandler::receiveUnexpectedIgnoredPartUUIDs()
     throw NetException("Unexpected packet IgnoredPartUUIDs received from client", ErrorCodes::UNEXPECTED_PACKET_FROM_CLIENT);
 }
 
+
+// bool TCPHandler::receiveData(bool scalar)
+// {
+//     initBlockInput();
+
+//     /// The name of the temporary table for writing data, default to empty string
+//     auto temporary_id = StorageID::createEmpty();
+//     readStringBinary(temporary_id.table_name, *in);
+
+//     /// Read one block from the network and write it down
+//     Block block = state.block_in->read();
+
+//     if (!block)
+//     {
+//         state.read_all_data = true;
+//         return false;
+//     }
+
+//     if (scalar)
+//     {
+//         /// Scalar value
+//         query_context->addScalar(temporary_id.table_name, block);
+//     }
+//     else if (!state.need_receive_data_for_insert && !state.need_receive_data_for_input)
+//     {
+//         /// Data for external tables
+
+//         auto resolved = query_context->tryResolveStorageID(temporary_id, Context::ResolveExternal);
+//         StoragePtr storage;
+//         /// If such a table does not exist, create it.
+//         if (resolved)
+//         {
+//             storage = DatabaseCatalog::instance().getTable(resolved, query_context);
+//         }
+//         else
+//         {
+//             NamesAndTypesList columns = block.getNamesAndTypesList();
+//             auto temporary_table = TemporaryTableHolder(query_context, ColumnsDescription{columns}, {});
+//             storage = temporary_table.getTable();
+//             query_context->addExternalTable(temporary_id.table_name, std::move(temporary_table));
+//         }
+//         auto metadata_snapshot = storage->getInMemoryMetadataPtr();
+//         /// The data will be written directly to the table.
+//         QueryPipeline temporary_table_out(storage->write(ASTPtr(), metadata_snapshot, query_context));
+//         PushingPipelineExecutor executor(temporary_table_out);
+//         executor.start();
+//         executor.push(block);
+//         executor.finish();
+//     }
+//     else if (state.need_receive_data_for_input)
+//     {
+//         /// 'input' table function.
+//         state.block_for_input = block;
+//     }
+//     else
+//     {
+//         /// INSERT query.
+//         state.block_for_insert = block;
+//     }
+//     return true;
+// }
+
 bool TCPHandler::receivePacket()
 {
     UInt64 packet_type = 0;

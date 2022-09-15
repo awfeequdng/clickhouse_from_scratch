@@ -22,17 +22,17 @@
 #include <Common/Allocator.h>
 #include <Common/Exception.h>
 #include <Common/StringUtils/StringUtils.h>
-// #include <Common/Arena.h>
+#include <Common/Arena.h>
 #include <Common/intExp.h>
 
 #include <Formats/FormatSettings.h>
 
-// #include <IO/CompressionMethod.h>
+#include <IO/CompressionMethod.h>
 #include <IO/ReadBuffer.h>
 #include <IO/ReadBufferFromMemory.h>
 #include <IO/VarInt.h>
 
-// #include <DataTypes/DataTypeDateTime.h>
+#include <DataTypes/DataTypeDateTime.h>
 
 #include <double-conversion/double-conversion.h>
 
@@ -132,16 +132,16 @@ inline void readStringBinary(std::string & s, ReadBuffer & buf, size_t MAX_STRIN
 }
 
 
-// inline StringRef readStringBinaryInto(Arena & arena, ReadBuffer & buf)
-// {
-//     size_t size = 0;
-//     readVarUInt(size, buf);
+inline StringRef readStringBinaryInto(Arena & arena, ReadBuffer & buf)
+{
+    size_t size = 0;
+    readVarUInt(size, buf);
 
-//     char * data = arena.alloc(size);
-//     buf.readStrict(data, size);
+    char * data = arena.alloc(size);
+    buf.readStrict(data, size);
 
-//     return StringRef(data, size);
-// }
+    return StringRef(data, size);
+}
 
 
 template <typename T>
@@ -1329,21 +1329,19 @@ struct PcgDeserializer
 {
     static void deserializePcg32(pcg32_fast & rng, ReadBuffer & buf)
     {
-        std::cout << "not implemented deserializePcg32 yet." << std::endl;
-        exit(-1);
-        // decltype(rng.state_) multiplier, increment, state;
-        // readText(multiplier, buf);
-        // assertChar(' ', buf);
-        // readText(increment, buf);
-        // assertChar(' ', buf);
-        // readText(state, buf);
+        decltype(rng.state_) multiplier, increment, state;
+        readText(multiplier, buf);
+        assertChar(' ', buf);
+        readText(increment, buf);
+        assertChar(' ', buf);
+        readText(state, buf);
 
-        // if (multiplier != rng.multiplier())
-        //     throw Exception(ErrorCodes::INCORRECT_DATA, "Incorrect multiplier in pcg32: expected {}, got {}", rng.multiplier(), multiplier);
-        // if (increment != rng.increment())
-        //     throw Exception(ErrorCodes::INCORRECT_DATA, "Incorrect increment in pcg32: expected {}, got {}", rng.increment(), increment);
+        if (multiplier != rng.multiplier())
+            throw Exception(ErrorCodes::INCORRECT_DATA, "Incorrect multiplier in pcg32: expected {}, got {}", rng.multiplier(), multiplier);
+        if (increment != rng.increment())
+            throw Exception(ErrorCodes::INCORRECT_DATA, "Incorrect increment in pcg32: expected {}, got {}", rng.increment(), increment);
 
-        // rng.state_ = state;
+        rng.state_ = state;
     }
 };
 
