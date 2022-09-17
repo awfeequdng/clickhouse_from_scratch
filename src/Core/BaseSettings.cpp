@@ -2,7 +2,7 @@
 #include <IO/ReadHelpers.h>
 #include <IO/WriteHelpers.h>
 #include <base/logger_useful.h>
-#include <Common/CurrentThread.h>
+
 
 namespace DB
 {

@@ -2,9 +2,10 @@
 
 #include <Core/SettingsFields.h>
 #include <Common/SettingsChanges.h>
+#include <base/range.h>
+#include <boost/blank.hpp>
 #include <unordered_map>
-#include "Core/MyBlank.h"
-#include <iostream>
+
 
 namespace DB
 {
@@ -106,7 +107,7 @@ public:
         const BaseSettings * settings;
         const typename Traits::Accessor * accessor;
         size_t index;
-        std::conditional_t<Traits::allow_custom_settings, const CustomSettingMap::mapped_type*, myblank::blank> custom_setting;
+        std::conditional_t<Traits::allow_custom_settings, const CustomSettingMap::mapped_type*, boost::blank> custom_setting;
     };
 
     enum SkipFlags
@@ -136,7 +137,7 @@ public:
         void setPointerToCustomSetting();
 
         SettingFieldRef field_ref;
-        std::conditional_t<Traits::allow_custom_settings, CustomSettingMap::const_iterator, myblank::blank> custom_settings_iterator;
+        std::conditional_t<Traits::allow_custom_settings, CustomSettingMap::const_iterator, boost::blank> custom_settings_iterator;
         SkipFlags skip_flags;
     };
 
@@ -161,12 +162,13 @@ public:
 
     Iterator begin() const { return allChanged().begin(); }
     Iterator end() const { return allChanged().end(); }
+
 private:
     SettingFieldCustom & getCustomSetting(const std::string_view & name);
     const SettingFieldCustom & getCustomSetting(const std::string_view & name) const;
     const SettingFieldCustom * tryGetCustomSetting(const std::string_view & name) const;
 
-    std::conditional_t<Traits::allow_custom_settings, CustomSettingMap, myblank::blank> custom_settings_map;
+    std::conditional_t<Traits::allow_custom_settings, CustomSettingMap, boost::blank> custom_settings_map;
 };
 
 struct BaseSettingsHelpers
@@ -303,7 +305,7 @@ template <typename Traits_>
 void BaseSettings<Traits_>::resetToDefault()
 {
     const auto & accessor = Traits::Accessor::instance();
-    for (size_t i = 0; i < accessor.size(); i++)
+    for (size_t i : collections::range(accessor.size()))
     {
         if (accessor.isValueChanged(*this, i))
             accessor.resetValueToDefault(*this, i);
@@ -447,10 +449,7 @@ void BaseSettings<Traits_>::read(ReadBuffer & in, SettingsWriteFormat format)
     {
         String name = BaseSettingsHelpers::readString(in);
         if (name.empty() /* empty string is a marker of the end of settings */)
-        {
-            std::cout << "empty settings.\n";
             break;
-        }
         size_t index = accessor.find(name);
 
         using Flags = BaseSettingsHelpers::Flags;
@@ -835,7 +834,7 @@ bool BaseSettings<Traits_>::SettingFieldRef::isObsolete() const
             constexpr int IMPORTANT = 0x01; \
             UNUSED(IMPORTANT); \
             LIST_OF_SETTINGS_MACRO(IMPLEMENT_SETTINGS_TRAITS_) \
-            for (size_t i = 0; i < res.field_infos.size(); i++) \
+            for (size_t i : collections::range(res.field_infos.size())) \
             { \
                 const auto & info = res.field_infos[i]; \
                 res.name_to_index_map.emplace(info.name, i); \

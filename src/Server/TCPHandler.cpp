@@ -161,6 +161,11 @@ void TCPHandler::sendException(const Exception & e, bool with_stack_trace)
     out->next();
 }
 
+void TCPHandler::sendLogs()
+{
+
+}
+
 void TCPHandler::runImpl()
 {
     setThreadName("TCPHandler");
@@ -233,25 +238,33 @@ void TCPHandler::runImpl()
     {
         /// We are waiting for a packet from the client. Thus, every `poll_interval` seconds check whether we need to shut down.
         {
+            std::cout << "main loop 1" << std::endl;
             Stopwatch idle_time;
             UInt64 timeout_ms = std::min(poll_interval, idle_connection_timeout) * 1000000;
             while (!server.isCancelled() && !static_cast<ReadBufferFromPocoSocket &>(*in).poll(timeout_ms))
             {
+                std::cout << "main loop 2" << std::endl;
                 if (idle_time.elapsedSeconds() > idle_connection_timeout)
                 {
+                    std::cout << "main loop 3" << std::endl;
                     LOG_TRACE(log, "Closing idle connection");
                     return;
                 }
             }
         }
+        std::cout << "main loop 4" << std::endl;
 
         /// If we need to shut down, or client disconnects.
         if (server.isCancelled() || in->eof())
             break;
 
+        std::cout << "main loop 5" << std::endl;
         Stopwatch watch;
         state.reset();
 
+        // /// Initialized later.
+        // std::optional<CurrentThread::QueryScope> query_scope;
+        std::cout << "main loop 6" << std::endl;
         /** An exception during the execution of request (it must be sent over the network to the client).
          *  The client will be able to accept it, if it did not happen while sending another packet and the client has not disconnected yet.
          */
@@ -260,23 +273,41 @@ void TCPHandler::runImpl()
 
         try
         {
+            std::cout << "main loop 7" << std::endl;
             /// If a user passed query-local timeouts, reset socket to initial state at the end of the query
             SCOPE_EXIT({state.timeout_setter.reset();});
 
             if (!receivePacket()) {
                 LOG_DEBUG(log, "receive packet failed.");
+                std::cout << "main loop 8" << std::endl;
                 continue;
             }
             LOG_INFO(log, "receive packet success.");
 
+            /** If part_uuids got received in previous packet, trying to read again.
+              */
+            if (state.empty() && state.part_uuids_to_ignore && !receivePacket())
+                continue;
+
+            std::cout << "main loop 9" << std::endl;
             /// Sync timeouts on client and server during current query to avoid dangling queries on server
             /// NOTE: We use send_timeout for the receive timeout and vice versa (change arguments ordering in TimeoutSetter),
             ///  because send_timeout is client-side setting which has opposite meaning on the server side.
             /// NOTE: these settings are applied only for current connection (not for distributed tables' connections)
             state.timeout_setter = std::make_unique<TimeoutSetter>(socket(), receive_timeout, send_timeout);
+            std::cout << "main loop 10" << std::endl;
 
-            /// Processing Query
-            // executeQuery(state.query, query_context, false, state.stage);
+
+            if (state.is_connection_closed)
+                break;
+
+            sendLogs();
+            sendEndOfStream();
+
+            /// QueryState should be cleared before QueryScope, since otherwise
+            /// the MemoryTracker will be wrong for possible deallocations.
+            /// (i.e. deallocations from the Aggregator with two-level aggregation)
+            state.reset();
         }
         catch (const Poco::Net::NetException & e)
         {
@@ -294,12 +325,21 @@ void TCPHandler::runImpl()
     }
 }
 
+void TCPHandler::sendEndOfStream()
+{
+    state.sent_all_data = true;
+    writeVarUInt(Protocol::Server::EndOfStream, *out);
+    out->next();
+}
+
 void TCPHandler::receiveQuery()
 {
+    std::cout << "recieve query -----------------xxxxxxxxxxxxx" << std::endl;
     UInt64 stage = 0;
     UInt64 compression = 0;
 
     state.is_empty = false;
+    std::cout << "state.is_empyt: " << state.is_empty << std::endl;
     readStringBinary(state.query_id, *in);
 
     /// In interserer mode,
@@ -428,6 +468,7 @@ void TCPHandler::receiveQuery()
 
 void TCPHandler::receiveUnexpectedQuery()
 {
+    std::cout << "receiveUnexpectedQuery 1" << std::endl;
     UInt64 skip_uint_64;
     String skip_string;
 
@@ -459,8 +500,10 @@ void TCPHandler::receiveUnexpectedQuery()
 
 void TCPHandler::initBlockInput()
 {
+    std::cout << "initBlockInput 1" << std::endl;
     if (!state.block_in)
     {
+        std::cout << "initBlockInput 2" << std::endl;
         /// 'allow_different_codecs' is set to true, because some parts of compressed data can be precompressed in advance
         /// with another codec that the rest of the data. Example: data sent by Distributed tables.
 
@@ -472,22 +515,27 @@ void TCPHandler::initBlockInput()
         else
             state.maybe_compressed_in = in;
 
+        std::cout << "initBlockInput 3" << std::endl;
 
         // todo: changed
         state.block_in = std::make_unique<NativeReader>(
             *state.maybe_compressed_in,
             client_tcp_protocol_version);
     }
+        std::cout << "initBlockInput 4" << std::endl;
 }
 
 bool TCPHandler::receiveData(bool scalar)
 {
+    std::cout << "receive DATA -----------------------12 " << std::endl;
     initBlockInput();
+    std::cout << "receive DATA -----------------------31 " << std::endl;
     LOG_DEBUG(log,  "receiveData");
-
+    std::cout << "receive DATA ----------------------- " << std::endl;
     /// The name of the temporary table for writing data, default to empty string
     auto temporary_id = StorageID::createEmpty();
     readStringBinary(temporary_id.table_name, *in);
+    std::cout << "receive DATA -----------------------1 " << std::endl;
 
     /// Read one block from the network and write it down
     Block block = state.block_in->read();
@@ -495,17 +543,20 @@ bool TCPHandler::receiveData(bool scalar)
     if (!block)
     {
         state.read_all_data = true;
+    std::cout << "receive DATA -----------------------2 " << std::endl;
         return false;
     }
 
     if (scalar)
     {
+    std::cout << "receive DATA -----------------------3 " << std::endl;
         /// Scalar value
         // query_context->addScalar(temporary_id.table_name, block);
         LOG_DEBUG(log, "query_context->addScalar( not implemented");
     }
     else if (!state.need_receive_data_for_insert && !state.need_receive_data_for_input)
     {
+    std::cout << "receive DATA -----------------------4 " << std::endl;
         /// Data for external tables
         LOG_DEBUG(log, "Data for external tables not implemented");
         // auto resolved = query_context->tryResolveStorageID(temporary_id, Context::ResolveExternal);
@@ -532,14 +583,17 @@ bool TCPHandler::receiveData(bool scalar)
     }
     else if (state.need_receive_data_for_input)
     {
+    std::cout << "receive DATA -----------------------5 " << std::endl;
         /// 'input' table function.
         state.block_for_input = block;
     }
     else
     {
+    std::cout << "receive DATA -----------------------6 " << std::endl;
         /// INSERT query.
         state.block_for_insert = block;
     }
+    std::cout << "receive DATA -----------------------7 " << std::endl;
     return true;
 }
 
@@ -576,14 +630,20 @@ void TCPHandler::receiveUnexpectedIgnoredPartUUIDs()
 
 bool TCPHandler::receiveUnexpectedData(bool throw_exception)
 {
+    std::cout << "receiveUnexpectedData : " << throw_exception << std::endl;
     String skip_external_table_name;
     readStringBinary(skip_external_table_name, *in);
+    std::cout << "receiveUnexpectedData : 1" << throw_exception << std::endl;
 
     std::shared_ptr<ReadBuffer> maybe_compressed_in;
-    if (last_block_in.compression == Protocol::Compression::Enable)
+    if (last_block_in.compression == Protocol::Compression::Enable) {
+
+    std::cout << "receiveUnexpectedData : 3" << throw_exception << std::endl;
         maybe_compressed_in = std::make_shared<CompressedReadBuffer>(*in, /* allow_different_codecs */ true);
+    }
     else
         maybe_compressed_in = in;
+    std::cout << "receiveUnexpectedData : 2" << throw_exception << std::endl;
 
     auto skip_block_in = std::make_shared<NativeReader>(*maybe_compressed_in, client_tcp_protocol_version);
     bool read_ok = skip_block_in->read();
@@ -591,8 +651,10 @@ bool TCPHandler::receiveUnexpectedData(bool throw_exception)
     if (!read_ok)
         state.read_all_data = true;
 
+    std::cout << "receiveUnexpectedData : 4" << throw_exception << std::endl;
     if (throw_exception)
         throw NetException("Unexpected packet Data received from client", ErrorCodes::UNEXPECTED_PACKET_FROM_CLIENT);
+    std::cout << "receiveUnexpectedData : 5" << throw_exception << std::endl;
 
     return read_ok;
 }
@@ -621,8 +683,12 @@ bool TCPHandler::receivePacket()
         case Protocol::Client::Scalar:
             if (state.skipping_data)
                 return receiveUnexpectedData(false);
-            if (state.empty())
-                receiveUnexpectedData(true);
+            std::cout << "state.empty: " << state.empty() << std::endl;
+            if (state.empty()) {
+                receiveUnexpectedData(false);
+                // receiveUnexpectedData(true);
+                return true;
+            }
             return receiveData(packet_type == Protocol::Client::Scalar);
         case Protocol::Client::Ping:
             writeVarUInt(Protocol::Server::Pong, *out);

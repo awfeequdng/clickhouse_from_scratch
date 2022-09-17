@@ -7,6 +7,8 @@
 #include <IO/ReadHelpers.h>
 #include <IO/ReadBufferFromString.h>
 #include <IO/WriteHelpers.h>
+#include <boost/algorithm/string/predicate.hpp>
+
 
 namespace DB
 {
@@ -28,9 +30,9 @@ namespace
                 return false;
             if (str == "1")
                 return true;
-            if (str == "false")
+            if (boost::iequals(str, "false"))
                 return false;
-            if (str == "true")
+            if (boost::iequals(str, "true"))
                 return true;
             throw Exception("Cannot parse bool from string '" + str + "'", ErrorCodes::CANNOT_PARSE_BOOL);
         }

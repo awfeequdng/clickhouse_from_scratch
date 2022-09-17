@@ -1,9 +1,10 @@
 #include <Common/Exception.h>
+#include <Common/ThreadProfileEvents.h>
+#include <Common/QueryProfiler.h>
 #include <Common/ThreadStatus.h>
 #include <base/errnoToString.h>
+// #include <Interpreters/OpenTelemetrySpanLog.h>
 
-#include "Common/CurrentThread.h"
-#include "base/logger_useful.h"
 #include <Poco/Logger.h>
 #include <base/getThreadId.h>
 #include <base/getPageSize.h>
@@ -74,7 +75,9 @@ static thread_local bool has_alt_stack = false;
 ThreadStatus::ThreadStatus()
     : thread_id{getThreadId()}
 {
+    last_rusage = std::make_unique<RUsageCounters>();
 
+    memory_tracker.setDescription("(for thread)");
     log = &Poco::Logger::get("ThreadStatus");
 
     current_thread = this;
@@ -125,12 +128,28 @@ ThreadStatus::ThreadStatus()
 
 ThreadStatus::~ThreadStatus()
 {
+    try
+    {
+        if (untracked_memory > 0)
+            memory_tracker.alloc(untracked_memory);
+        else
+            memory_tracker.free(-untracked_memory);
+    }
+    catch (const DB::Exception &)
+    {
+        /// It's a minor tracked memory leak here (not the memory itself but it's counter).
+        /// We've already allocated a little bit more than the limit and cannot track it in the thread memory tracker or its parent.
+    }
 
     if (thread_group)
     {
         std::lock_guard guard(thread_group->mutex);
         thread_group->threads.erase(this);
     }
+
+    /// It may cause segfault if query_context was destroyed, but was not detached
+    auto query_context_ptr = query_context.lock();
+    assert((!query_context_ptr && query_id.empty()) || (query_context_ptr && query_id == query_context_ptr->getCurrentQueryId()));
 
     if (deleter)
         deleter();
@@ -139,6 +158,58 @@ ThreadStatus::~ThreadStatus()
     /// For example, PushingToViewsBlockOutputStream creates and deletes ThreadStatus instances while running in the main query thread
     if (current_thread == this)
         current_thread = nullptr;
+}
+
+void ThreadStatus::updatePerformanceCounters()
+{
+    try
+    {
+        RUsageCounters::updateProfileEvents(*last_rusage, performance_counters);
+        if (taskstats)
+            taskstats->updateCounters(performance_counters);
+    }
+    catch (...)
+    {
+        tryLogCurrentException(log);
+    }
+}
+
+void ThreadStatus::assertState(const std::initializer_list<int> & permitted_states, const char * description) const
+{
+    for (auto permitted_state : permitted_states)
+    {
+        if (getCurrentState() == permitted_state)
+            return;
+    }
+
+    if (description)
+        throw Exception(ErrorCodes::LOGICAL_ERROR, "Unexpected thread state {}: {}", getCurrentState(), description);
+    else
+        throw Exception(ErrorCodes::LOGICAL_ERROR, "Unexpected thread state {}", getCurrentState());
+}
+
+void ThreadStatus::attachInternalTextLogsQueue(const InternalTextLogsQueuePtr & logs_queue,
+                                               LogsLevel client_logs_level)
+{
+    logs_queue_ptr = logs_queue;
+
+    if (!thread_group)
+        return;
+
+    std::lock_guard lock(thread_group->mutex);
+    thread_group->logs_queue_ptr = logs_queue;
+    thread_group->client_logs_level = client_logs_level;
+}
+
+void ThreadStatus::attachInternalProfileEventsQueue(const InternalProfileEventsQueuePtr & profile_queue)
+{
+    profile_queue_ptr = profile_queue;
+
+    if (!thread_group)
+        return;
+
+    std::lock_guard lock(thread_group->mutex);
+    thread_group->profile_queue_ptr = profile_queue;
 }
 
 void ThreadStatus::setFatalErrorCallback(std::function<void()> callback)

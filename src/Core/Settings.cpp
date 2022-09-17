@@ -1,8 +1,11 @@
 #include "Settings.h"
 
 #include <Poco/Util/AbstractConfiguration.h>
+#include <Columns/ColumnArray.h>
+#include <Columns/ColumnMap.h>
 #include <Common/typeid_cast.h>
 #include <string.h>
+#include <boost/program_options/options_description.hpp>
 
 namespace DB
 {
@@ -51,6 +54,44 @@ void Settings::loadSettingsFromConfig(const String & path, const Poco::Util::Abs
     for (const std::string & key : config_keys)
     {
         set(key, config.getString(path + "." + key));
+    }
+}
+
+void Settings::dumpToMapColumn(IColumn * column, bool changed_only)
+{
+    /// Convert ptr and make simple check
+    auto * column_map = column ? &typeid_cast<ColumnMap &>(*column) : nullptr;
+    if (!column_map)
+        return;
+
+    auto & offsets = column_map->getNestedColumn().getOffsets();
+    auto & tuple_column = column_map->getNestedData();
+    auto & key_column = tuple_column.getColumn(0);
+    auto & value_column = tuple_column.getColumn(1);
+
+    size_t size = 0;
+    for (const auto & setting : all(changed_only ? SKIP_UNCHANGED : SKIP_NONE))
+    {
+        auto name = setting.getName();
+        key_column.insertData(name.data(), name.size());
+        value_column.insert(setting.getValueString());
+        size++;
+    }
+
+    offsets.push_back(offsets.back() + size);
+}
+
+void Settings::addProgramOptions(boost::program_options::options_description & options)
+{
+    for (const auto & field : all())
+    {
+        const std::string_view name = field.getName();
+        auto on_program_option
+            = boost::function1<void, const std::string &>([this, name](const std::string & value) { set(name, value); });
+        options.add(boost::shared_ptr<boost::program_options::option_description>(new boost::program_options::option_description(
+            name.data(),
+            boost::program_options::value<std::string>()->composing()->notifier(on_program_option),
+            field.getDescription())));
     }
 }
 

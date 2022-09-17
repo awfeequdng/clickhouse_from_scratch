@@ -44,15 +44,15 @@ IMPLEMENT_SETTING_ENUM(TotalsMode, ErrorCodes::UNKNOWN_TOTALS_MODE,
      {"after_having_auto",      TotalsMode::AFTER_HAVING_AUTO}})
 
 
-// IMPLEMENT_SETTING_ENUM(OverflowMode, ErrorCodes::UNKNOWN_OVERFLOW_MODE,
-//     {{"throw", OverflowMode::THROW},
-//      {"break", OverflowMode::BREAK}})
+IMPLEMENT_SETTING_ENUM(OverflowMode, ErrorCodes::UNKNOWN_OVERFLOW_MODE,
+    {{"throw", OverflowMode::THROW},
+     {"break", OverflowMode::BREAK}})
 
 
-// IMPLEMENT_SETTING_ENUM_WITH_RENAME(OverflowModeGroupBy, ErrorCodes::UNKNOWN_OVERFLOW_MODE,
-//     {{"throw", OverflowMode::THROW},
-//      {"break", OverflowMode::BREAK},
-//      {"any", OverflowMode::ANY}})
+IMPLEMENT_SETTING_ENUM_WITH_RENAME(OverflowModeGroupBy, ErrorCodes::UNKNOWN_OVERFLOW_MODE,
+    {{"throw", OverflowMode::THROW},
+     {"break", OverflowMode::BREAK},
+     {"any", OverflowMode::ANY}})
 
 
 IMPLEMENT_SETTING_ENUM(DistributedProductMode, ErrorCodes::UNKNOWN_DISTRIBUTED_PRODUCT_MODE,
@@ -121,5 +121,4 @@ IMPLEMENT_SETTING_ENUM(EnumComparingMode, ErrorCodes::BAD_ARGUMENTS,
     {{"by_names",   FormatSettings::EnumComparingMode::BY_NAMES},
      {"by_values",  FormatSettings::EnumComparingMode::BY_VALUES},
      {"by_names_case_insensitive", FormatSettings::EnumComparingMode::BY_NAMES_CASE_INSENSITIVE}})
-
-} // namespace DB
+}

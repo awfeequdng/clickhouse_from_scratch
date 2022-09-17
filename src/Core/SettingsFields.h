@@ -5,6 +5,7 @@
 #include <base/types.h>
 #include <Core/Field.h>
 #include <Core/MultiEnum.h>
+#include <boost/range/adaptor/map.hpp>
 #include <chrono>
 #include <unordered_map>
 #include <string_view>
@@ -319,11 +320,11 @@ void SettingFieldEnum<EnumT, Traits>::readBinary(ReadBuffer & in)
             return it->second; \
         String msg = "Unexpected value of " #NEW_NAME ": '" + String{str} + "'. Must be one of ["; \
         bool need_comma = false; \
-        for (auto & name : map) \
+        for (auto & name : map | boost::adaptors::map_keys) \
         { \
             if (std::exchange(need_comma, true)) \
                 msg += ", "; \
-            msg += "'" + String{name.first} + "'"; \
+            msg += "'" + String{name} + "'"; \
         } \
         msg += "]"; \
         throw Exception(msg, ERROR_CODE_FOR_UNEXPECTED_NAME); \

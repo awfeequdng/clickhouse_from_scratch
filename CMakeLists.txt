@@ -142,6 +142,8 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/fast_float)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib)
 
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/base/readpassphrase)
+
 # include_directories(${CMAKE_CURRENT_SOURCE_DIR}/contrib/boost)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/contrib/miniselect/include)
@@ -168,6 +170,7 @@ include_directories(base)
 include_directories(base/pcg-random)
 include_directories(base/daemon)
 include_directories(base/widechar_width)
+
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 SET (CMAKE_CXX_STANDARD 20)
 
@@ -202,6 +205,9 @@ target_link_libraries(cfs
   liblzma
   cityhash
   boost::headers_only
+  boost::program_options
+  boost::context
+  readpassphrase
 )
 
 if (USE_BZIP2)
