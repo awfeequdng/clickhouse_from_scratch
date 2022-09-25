@@ -30,4 +30,4 @@ endif ()
 #     add_subdirectory (xz)
 # endif()
 add_subdirectory (xz)
-
+include_directories(${PROJECT_SOURCE_DIR}/contrib/xz/src/liblzma/api)
