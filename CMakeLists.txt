@@ -132,7 +132,10 @@ set(CMAKE_CXX_STANDARD 20)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/cityhash102)
 include_directories(contrib/cityhash102/include)
 
+# 解决zstd.h中deprecated报错的问题
+# add_definitions(-DUSE_REPLXX)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/replxx)
+
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/double-conversion)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/cctz)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/dragonbox)
@@ -194,6 +197,7 @@ target_link_libraries(cfs
   Poco::Util
   fmt
   replxx
+  readline
   double-conversion
   cctz
   dragonbox_to_chars
@@ -219,6 +223,8 @@ endif()
 add_executable(clickhouse
   programs/main.cpp
   programs/server/Server.cpp
+  programs/client/Client.cpp
+  programs/client/TestTags.cpp
 )
 
 target_link_libraries(clickhouse

@@ -26,7 +26,7 @@
 #include <Common/Exception.h>
 #include <Common/formatReadable.h>
 #include <Common/TerminalSize.h>
-#include <Common/Config/configReadClient.h>
+// #include <Common/Config/configReadClient.h>
 #include "Common/MemoryTracker.h"
 
 #include <Core/QueryProcessingStage.h>
@@ -40,17 +40,7 @@
 #include <IO/WriteBufferFromOStream.h>
 #include <IO/UseSSL.h>
 
-#include <Parsers/ASTCreateQuery.h>
-#include <Parsers/ASTDropQuery.h>
-#include <Parsers/ASTSetQuery.h>
-#include <Parsers/ASTUseQuery.h>
-#include <Parsers/ASTInsertQuery.h>
-#include <Parsers/ASTSelectQuery.h>
-
-#include <Interpreters/InterpreterSetQuery.h>
-
-#include <Functions/registerFunctions.h>
-#include <AggregateFunctions/registerAggregateFunctions.h>
+// #include <Functions/registerFunctions.h>
 #include <Formats/registerFormats.h>
 #include "TestTags.h"
 
@@ -196,13 +186,13 @@ bool Client::executeMultiQuery(const String & all_queries_text)
             case MultiQueryProcessingStage::EXECUTE_QUERY:
             {
                 full_query = all_queries_text.substr(this_query_begin - all_queries_text.data(), this_query_end - this_query_begin);
-                if (query_fuzzer_runs)
-                {
-                    if (!processWithFuzzing(full_query))
-                        return false;
-                    this_query_begin = this_query_end;
-                    continue;
-                }
+                // if (query_fuzzer_runs)
+                // {
+                //     if (!processWithFuzzing(full_query))
+                //         return false;
+                //     this_query_begin = this_query_end;
+                //     continue;
+                // }
 
                 // Now we know for sure where the query ends.
                 // Look for the hint in the text of query + insert data + trailing
@@ -293,18 +283,18 @@ bool Client::executeMultiQuery(const String & all_queries_text)
                         connect();
                 }
 
-                // For INSERTs with inline data: use the end of inline data as
-                // reported by the format parser (it is saved in sendData()).
-                // This allows us to handle queries like:
-                //   insert into t values (1); select 1
-                // , where the inline data is delimited by semicolon and not by a
-                // newline.
-                auto * insert_ast = parsed_query->as<ASTInsertQuery>();
-                if (insert_ast && insert_ast->data)
-                {
-                    this_query_end = insert_ast->end;
-                    adjustQueryEnd(this_query_end, all_queries_end, global_context->getSettingsRef().max_parser_depth);
-                }
+                // // For INSERTs with inline data: use the end of inline data as
+                // // reported by the format parser (it is saved in sendData()).
+                // // This allows us to handle queries like:
+                // //   insert into t values (1); select 1
+                // // , where the inline data is delimited by semicolon and not by a
+                // // newline.
+                // auto * insert_ast = parsed_query->as<ASTInsertQuery>();
+                // if (insert_ast && insert_ast->data)
+                // {
+                //     this_query_end = insert_ast->end;
+                //     adjustQueryEnd(this_query_end, all_queries_end, global_context->getSettingsRef().max_parser_depth);
+                // }
 
                 // Report error.
                 if (have_error)
@@ -383,10 +373,10 @@ void Client::initialize(Poco::Util::Application & self)
     if (home_path_cstr)
         home_path = home_path_cstr;
 
-    configReadClient(config(), home_path);
+    // configReadClient(config(), home_path);
 
     // global_context->setApplicationType(Context::ApplicationType::CLIENT);
-    global_context->setQueryParameters(query_parameters);
+    // global_context->setQueryParameters(query_parameters);
 
     /// settings and limits could be specified in config file, but passed settings has higher priority
     for (const auto & setting : global_context->getSettingsRef().allUnchanged())
@@ -397,8 +387,8 @@ void Client::initialize(Poco::Util::Application & self)
     }
 
     /// Set path for format schema files
-    if (config().has("format_schema_path"))
-        global_context->setFormatSchemaPath(fs::weakly_canonical(config().getString("format_schema_path")));
+    // if (config().has("format_schema_path"))
+        // global_context->setFormatSchemaPath(fs::weakly_canonical(config().getString("format_schema_path")));
 }
 
 
@@ -452,21 +442,28 @@ try
         total_memory_tracker.setMetric(CurrentMetrics::MemoryTracking);
     }
 
-    registerFormats();
-    registerFunctions();
-    registerAggregateFunctions();
+    // registerFormats();
+    // registerFunctions();
+    // registerAggregateFunctions();
 
     processConfig();
 
+    std::cout << "main 0" << std::endl;
     connect();
+
+    std::cout << "main 1" << std::endl;
 
     if (is_interactive && !delayed_interactive)
     {
+        std::cout << "main 2" << std::endl;
         prepareForInteractive();
+        std::cout << "main 3" << std::endl;
         runInteractive();
+        std::cout << "main 4" << std::endl;
     }
     else
     {
+        std::cout << "main 5" << std::endl;
         connection->setDefaultDatabase(connection_parameters.default_database);
 
         runNonInteractive();
@@ -512,6 +509,7 @@ catch (...)
 
 void Client::connect()
 {
+    std::cout << "enter client connect " << std::endl;
     connection_parameters = ConnectionParameters(config());
 
     if (is_interactive)
@@ -643,6 +641,8 @@ void Client::connect()
     /// Quite suboptimal.
     for (const auto & [key, value] : prompt_substitutions)
         boost::replace_all(prompt_by_server_display_name, "{" + key + "}", value);
+
+    std::cout << "exit connect client" << std::endl;
 }
 
 
@@ -669,323 +669,6 @@ void Client::printChangedSettings() const
     }
 }
 
-
-static bool queryHasWithClause(const IAST * ast)
-{
-    if (const auto * select = dynamic_cast<const ASTSelectQuery *>(ast); select && select->with())
-    {
-        return true;
-    }
-
-    // This full recursive walk is somewhat excessive, because most of the
-    // children are not queries, but on the other hand it will let us to avoid
-    // breakage when the AST structure changes and some new variant of query
-    // nesting is added. This function is used in fuzzer, so it's better to be
-    // defensive and avoid weird unexpected errors.
-    // clang-tidy is confused by this function: it thinks that if `select` is
-    // nullptr, `ast` is also nullptr, and complains about nullptr dereference.
-    // NOLINTNEXTLINE
-    for (const auto & child : ast->children)
-    {
-        if (queryHasWithClause(child.get()))
-        {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-
-/// Returns false when server is not available.
-bool Client::processWithFuzzing(const String & full_query)
-{
-    ASTPtr orig_ast;
-
-    try
-    {
-        const char * begin = full_query.data();
-        orig_ast = parseQuery(begin, begin + full_query.size(), true);
-    }
-    catch (const Exception & e)
-    {
-        if (e.code() != ErrorCodes::SYNTAX_ERROR &&
-            e.code() != ErrorCodes::TOO_DEEP_RECURSION)
-            throw;
-    }
-
-    // `USE db` should not be executed
-    // since this will break every query after `DROP db`
-    if (orig_ast->as<ASTUseQuery>())
-    {
-        return true;
-    }
-
-    if (!orig_ast)
-    {
-        // Can't continue after a parsing error
-        return true;
-    }
-
-    // Don't repeat:
-    // - INSERT -- Because the tables may grow too big.
-    // - CREATE -- Because first we run the unmodified query, it will succeed,
-    //             and the subsequent queries will fail.
-    //             When we run out of fuzzer errors, it may be interesting to
-    //             add fuzzing of create queries that wraps columns into
-    //             LowCardinality or Nullable.
-    //             Also there are other kinds of create queries such as CREATE
-    //             DICTIONARY, we could fuzz them as well.
-    // - DROP   -- No point in this (by the same reasons).
-    // - SET    -- The time to fuzz the settings has not yet come
-    //             (see comments in Client/QueryFuzzer.cpp)
-    size_t this_query_runs = query_fuzzer_runs;
-    if (orig_ast->as<ASTInsertQuery>() ||
-        orig_ast->as<ASTCreateQuery>() ||
-        orig_ast->as<ASTDropQuery>() ||
-        orig_ast->as<ASTSetQuery>())
-    {
-        this_query_runs = 1;
-    }
-
-    String query_to_execute;
-    ASTPtr parsed_query;
-
-    ASTPtr fuzz_base = orig_ast;
-    for (size_t fuzz_step = 0; fuzz_step < this_query_runs; ++fuzz_step)
-    {
-        fmt::print(stderr, "Fuzzing step {} out of {}\n", fuzz_step, this_query_runs);
-
-        ASTPtr ast_to_process;
-        try
-        {
-            WriteBufferFromOwnString dump_before_fuzz;
-            fuzz_base->dumpTree(dump_before_fuzz);
-            auto base_before_fuzz = fuzz_base->formatForErrorMessage();
-
-            ast_to_process = fuzz_base->clone();
-
-            WriteBufferFromOwnString dump_of_cloned_ast;
-            ast_to_process->dumpTree(dump_of_cloned_ast);
-
-            // Run the original query as well.
-            if (fuzz_step > 0)
-            {
-                fuzzer.fuzzMain(ast_to_process);
-            }
-
-            auto base_after_fuzz = fuzz_base->formatForErrorMessage();
-
-            // Check that the source AST didn't change after fuzzing. This
-            // helps debug AST cloning errors, where the cloned AST doesn't
-            // clone all its children, and erroneously points to some source
-            // child elements.
-            if (base_before_fuzz != base_after_fuzz)
-            {
-                printChangedSettings();
-
-                fmt::print(
-                    stderr,
-                    "Base before fuzz: {}\n"
-                    "Base after fuzz: {}\n",
-                    base_before_fuzz,
-                    base_after_fuzz);
-                fmt::print(stderr, "Dump before fuzz:\n{}\n", dump_before_fuzz.str());
-                fmt::print(stderr, "Dump of cloned AST:\n{}\n", dump_of_cloned_ast.str());
-                fmt::print(stderr, "Dump after fuzz:\n");
-
-                WriteBufferFromOStream cerr_buf(std::cerr, 4096);
-                fuzz_base->dumpTree(cerr_buf);
-                cerr_buf.next();
-
-                fmt::print(
-                    stderr,
-                    "Found error: IAST::clone() is broken for some AST node. This is a bug. The original AST ('dump before fuzz') and its cloned copy ('dump of cloned AST') refer to the same nodes, which must never happen. This means that their parent node doesn't implement clone() correctly.");
-
-                exit(1);
-            }
-
-            auto fuzzed_text = ast_to_process->formatForErrorMessage();
-            if (fuzz_step > 0 && fuzzed_text == base_before_fuzz)
-            {
-                fmt::print(stderr, "Got boring AST\n");
-                continue;
-            }
-
-            parsed_query = ast_to_process;
-            query_to_execute = parsed_query->formatForErrorMessage();
-            processParsedSingleQuery(full_query, query_to_execute, parsed_query);
-        }
-        catch (...)
-        {
-            // Some functions (e.g. protocol parsers) don't throw, but
-            // set last_exception instead, so we'll also do it here for
-            // uniformity.
-            // Surprisingly, this is a client exception, because we get the
-            // server exception w/o throwing (see onReceiveException()).
-            client_exception = std::make_unique<Exception>(getCurrentExceptionMessage(print_stack_trace), getCurrentExceptionCode());
-            have_error = true;
-        }
-
-        const auto * exception = server_exception ? server_exception.get() : client_exception.get();
-        // Sometimes you may get TOO_DEEP_RECURSION from the server,
-        // and TOO_DEEP_RECURSION should not fail the fuzzer check.
-        if (have_error && exception->code() == ErrorCodes::TOO_DEEP_RECURSION)
-        {
-            have_error = false;
-            server_exception.reset();
-            client_exception.reset();
-            return true;
-        }
-
-        if (have_error)
-        {
-            fmt::print(stderr, "Error on processing query '{}': {}\n", ast_to_process->formatForErrorMessage(), exception->message());
-
-            // Try to reconnect after errors, for two reasons:
-            // 1. We might not have realized that the server died, e.g. if
-            //    it sent us a <Fatal> trace and closed connection properly.
-            // 2. The connection might have gotten into a wrong state and
-            //    the next query will get false positive about
-            //    "Unknown packet from server".
-            try
-            {
-                connection->forceConnected(connection_parameters.timeouts);
-            }
-            catch (...)
-            {
-                // Just report it, we'll terminate below.
-                fmt::print(stderr,
-                    "Error while reconnecting to the server: {}\n",
-                    getCurrentExceptionMessage(true));
-
-                // The reconnection might fail, but we'll still be connected
-                // in the sense of `connection->isConnected() = true`,
-                // in case when the requested database doesn't exist.
-                // Disconnect manually now, so that the following code doesn't
-                // have any doubts, and the connection state is predictable.
-                connection->disconnect();
-            }
-        }
-
-        if (!connection->isConnected())
-        {
-            // Probably the server is dead because we found an assertion
-            // failure. Fail fast.
-            fmt::print(stderr, "Lost connection to the server.\n");
-
-            // Print the changed settings because they might be needed to
-            // reproduce the error.
-            printChangedSettings();
-
-            return false;
-        }
-
-        // Check that after the query is formatted, we can parse it back,
-        // format again and get the same result. Unfortunately, we can't
-        // compare the ASTs, which would be more sensitive to errors. This
-        // double formatting check doesn't catch all errors, e.g. we can
-        // format query incorrectly, but to a valid SQL that we can then
-        // parse and format into the same SQL.
-        // There are some complicated cases where we can generate the SQL
-        // which we can't parse:
-        // * first argument of lambda() replaced by fuzzer with
-        //   something else, leading to constructs such as
-        //   arrayMap((min(x) + 3) -> x + 1, ....)
-        // * internals of Enum replaced, leading to:
-        //   Enum(equals(someFunction(y), 3)).
-        // And there are even the cases when we can parse the query, but
-        // it's logically incorrect and its formatting is a mess, such as
-        // when `lambda()` function gets substituted into a wrong place.
-        // To avoid dealing with these cases, run the check only for the
-        // queries we were able to successfully execute.
-        // Another caveat is that sometimes WITH queries are not executed,
-        // if they are not referenced by the main SELECT, so they can still
-        // have the aforementioned problems. Disable this check for such
-        // queries, for lack of a better solution.
-        // There is also a problem that fuzzer substitutes positive Int64
-        // literals or Decimal literals, which are then parsed back as
-        // UInt64, and suddenly duplicate alias substitition starts or stops
-        // working (ASTWithAlias::formatImpl) or something like that.
-        // So we compare not even the first and second formatting of the
-        // query, but second and third.
-        // If you have to add any more workarounds to this check, just remove
-        // it altogether, it's not so useful.
-        if (!have_error && !queryHasWithClause(parsed_query.get()))
-        {
-            ASTPtr ast_2;
-            try
-            {
-                const auto * tmp_pos = query_to_execute.c_str();
-
-                ast_2 = parseQuery(tmp_pos, tmp_pos + query_to_execute.size(), false /* allow_multi_statements */);
-            }
-            catch (Exception & e)
-            {
-                if (e.code() != ErrorCodes::SYNTAX_ERROR &&
-                    e.code() != ErrorCodes::TOO_DEEP_RECURSION)
-                    throw;
-            }
-
-            if (ast_2)
-            {
-                const auto text_2 = ast_2->formatForErrorMessage();
-                const auto * tmp_pos = text_2.c_str();
-                const auto ast_3 = parseQuery(tmp_pos, tmp_pos + text_2.size(),
-                    false /* allow_multi_statements */);
-                const auto text_3 = ast_3->formatForErrorMessage();
-                if (text_3 != text_2)
-                {
-                    fmt::print(stderr, "Found error: The query formatting is broken.\n");
-
-                    printChangedSettings();
-
-                    fmt::print(stderr,
-                        "Got the following (different) text after formatting the fuzzed query and parsing it back:\n'{}'\n, expected:\n'{}'\n",
-                        text_3, text_2);
-                    fmt::print(stderr, "In more detail:\n");
-                    fmt::print(stderr, "AST-1 (generated by fuzzer):\n'{}'\n", parsed_query->dumpTree());
-                    fmt::print(stderr, "Text-1 (AST-1 formatted):\n'{}'\n", query_to_execute);
-                    fmt::print(stderr, "AST-2 (Text-1 parsed):\n'{}'\n", ast_2->dumpTree());
-                    fmt::print(stderr, "Text-2 (AST-2 formatted):\n'{}'\n", text_2);
-                    fmt::print(stderr, "AST-3 (Text-2 parsed):\n'{}'\n", ast_3->dumpTree());
-                    fmt::print(stderr, "Text-3 (AST-3 formatted):\n'{}'\n", text_3);
-                    fmt::print(stderr, "Text-3 must be equal to Text-2, but it is not.\n");
-
-                    exit(1);
-                }
-            }
-        }
-
-        // The server is still alive so we're going to continue fuzzing.
-        // Determine what we're going to use as the starting AST.
-        if (have_error)
-        {
-            // Query completed with error, keep the previous starting AST.
-            // Also discard the exception that we now know to be non-fatal,
-            // so that it doesn't influence the exit code.
-            server_exception.reset();
-            client_exception.reset();
-            have_error = false;
-        }
-        else if (ast_to_process->formatForErrorMessage().size() > 500)
-        {
-            // ast too long, start from original ast
-            fmt::print(stderr, "Current AST is too long, discarding it and using the original AST as a start\n");
-            fuzz_base = orig_ast;
-        }
-        else
-        {
-            // fuzz starting from this successful query
-            fmt::print(stderr, "Query succeeded, using this AST as a start\n");
-            fuzz_base = ast_to_process;
-        }
-    }
-
-    return true;
-}
-
-
 void Client::printHelpMessage(const OptionsDescription & options_description)
 {
     std::cout << options_description.main_description.value() << "\n";
@@ -1000,7 +683,7 @@ void Client::addOptions(OptionsDescription & options_description)
     options_description.main_description->add_options()
         ("config,c", po::value<std::string>(), "config-file path (another shorthand)")
         ("host,h", po::value<std::string>()->default_value("localhost"), "server host")
-        ("port", po::value<int>()->default_value(9000), "server port")
+        ("port", po::value<int>()->default_value(19000), "server port")
         ("secure,s", "Use TLS connection")
         ("user,u", po::value<std::string>()->default_value("default"), "user")
         /** If "--password [value]" is used but the value is omitted, the bad argument exception will be thrown.
@@ -1065,25 +748,6 @@ void Client::processOptions(const OptionsDescription & options_description,
             options_description.external_description.value()).run();
         po::variables_map external_options;
         po::store(parsed_tables, external_options);
-
-        try
-        {
-            external_tables.emplace_back(external_options);
-            if (external_tables.back().file == "-")
-                ++number_of_external_tables_with_stdin_source;
-            if (number_of_external_tables_with_stdin_source > 1)
-                throw Exception("Two or more external tables has stdin (-) set as --file field", ErrorCodes::BAD_ARGUMENTS);
-        }
-        catch (const Exception & e)
-        {
-            std::cerr << getExceptionMessage(e, false) << std::endl;
-            std::cerr << "Table №" << i << std::endl << std::endl;
-            /// Avoid the case when error exit code can possibly overflow to normal (zero).
-            auto exit_code = e.code() % 256;
-            if (exit_code == 0)
-                exit_code = 255;
-            exit(exit_code);
-        }
     }
     send_external_tables = true;
 
@@ -1145,13 +809,13 @@ void Client::processOptions(const OptionsDescription & options_description,
         ignore_error = true;
     }
 
-    if (options.count("opentelemetry-traceparent"))
-    {
-        String traceparent = options["opentelemetry-traceparent"].as<std::string>();
-        String error;
-        if (!global_context->getClientInfo().client_trace_context.parseTraceparentHeader(traceparent, error))
-            throw Exception(ErrorCodes::BAD_ARGUMENTS, "Cannot parse OpenTelemetry traceparent '{}': {}", traceparent, error);
-    }
+    // if (options.count("opentelemetry-traceparent"))
+    // {
+    //     String traceparent = options["opentelemetry-traceparent"].as<std::string>();
+    //     String error;
+    //     if (!global_context->getClientInfo().client_trace_context.parseTraceparentHeader(traceparent, error))
+    //         throw Exception(ErrorCodes::BAD_ARGUMENTS, "Cannot parse OpenTelemetry traceparent '{}': {}", traceparent, error);
+    // }
 
     if (options.count("opentelemetry-tracestate"))
         global_context->getClientInfo().client_trace_context.tracestate = options["opentelemetry-tracestate"].as<std::string>();

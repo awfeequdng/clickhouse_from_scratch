@@ -22,11 +22,13 @@ using MainFunc = int (*)(int, char**);
 
 extern int mainEntryClickHouseServer(int argc, char ** argv);
 
+extern int mainEntryClickHouseClient(int argc, char ** argv);
 
 /// Add an item here to register new application
 std::pair<const char *, MainFunc> clickhouse_applications[] =
 {
     {"server", mainEntryClickHouseServer},
+    {"client", mainEntryClickHouseClient},
 };
 
 

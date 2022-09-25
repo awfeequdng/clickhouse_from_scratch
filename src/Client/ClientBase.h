@@ -50,10 +50,10 @@ protected:
     void runInteractive();
     void runNonInteractive();
 
-    virtual bool processWithFuzzing(const String &)
-    {
-        throw Exception("Query processing with fuzzing is not implemented", ErrorCodes::NOT_IMPLEMENTED);
-    }
+    // virtual bool processWithFuzzing(const String &)
+    // {
+    //     throw Exception("Query processing with fuzzing is not implemented", ErrorCodes::NOT_IMPLEMENTED);
+    // }
 
     virtual bool executeMultiQuery(const String & all_queries_text) = 0;
     virtual void connect() = 0;

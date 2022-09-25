@@ -1,7 +1,6 @@
 #include <base/LineReader.h>
 
 #include <iostream>
-#include <algorithm>
 #include <string_view>
 
 #include <string.h>
@@ -10,7 +9,6 @@
 #include <sys/time.h>
 #include <sys/types.h>
 
-#include "Common/StringUtils/StringUtils.h"
 
 #ifdef OS_LINUX
 /// We can detect if code is linked with one or another readline variants or open the library dynamically.
@@ -18,7 +16,8 @@
 extern "C"
 {
     char * readline(const char *) __attribute__((__weak__));
-    char * (*readline_ptr)(const char *) = readline;
+    char * (*readline_ptr)(const char *) = 0;
+    // char * (*readline_ptr)(const char *) = readline;
 }
 #endif
 
@@ -29,11 +28,11 @@ extern "C"
 namespace
 {
 
-// /// Trim ending whitespace inplace
-// void trim(String & s)
-// {
-//     s.erase(std::find_if(s.rbegin(), s.rend(), [](int ch) { return !std::isspace(ch); }).base(), s.end());
-// }
+/// Trim ending whitespace inplace
+void trim(String & s)
+{
+    s.erase(std::find_if(s.rbegin(), s.rend(), [](int ch) { return !std::isspace(ch); }).base(), s.end());
+}
 
 /// Check if multi-line query is inserted from the paste buffer.
 /// Allows delaying the start of query execution until the entirety of query is inserted.
@@ -108,7 +107,7 @@ String LineReader::readLine(const String & first_prompt, const String & second_p
         const char * has_extender = nullptr;
         for (const auto * extender : extenders)
         {
-            if (endsWith(input, extender))
+            if (input.ends_with(extender))
             {
                 has_extender = extender;
                 break;
@@ -118,7 +117,7 @@ String LineReader::readLine(const String & first_prompt, const String & second_p
         const char * has_delimiter = nullptr;
         for (const auto * delimiter : delimiters)
         {
-            if (endsWith(input, delimiter))
+            if (input.ends_with(delimiter))
             {
                 has_delimiter = delimiter;
                 break;
@@ -153,27 +152,38 @@ String LineReader::readLine(const String & first_prompt, const String & second_p
 LineReader::InputStatus LineReader::readOneLine(const String & prompt)
 {
     input.clear();
-
+    std::cout << " readOneLine 1" << std::endl;
 #ifdef OS_LINUX
     if (!readline_ptr)
     {
+    std::cout << " readOneLine 2" << std::endl;
         for (const auto * name : {"libreadline.so", "libreadline.so.0", "libeditline.so", "libeditline.so.0"})
         {
+    std::cout << " readOneLine 3" << std::endl;
+    std::cout << " readOneLine 3" << std::endl;
             void * dl_handle = dlopen(name, RTLD_LAZY);
+    std::cout << " readOneLine 4" << std::endl;
             if (dl_handle)
             {
-                readline_ptr = reinterpret_cast<char * (*)(const char *)>(dlsym(dl_handle, "readline"));
+    std::cout << " readOneLine 5" << std::endl;
+                auto tmp_readline_ptr = dlsym(dl_handle, "readline");
+                std::cout << "dlsym(dl_handle, readline): " << tmp_readline_ptr << std::endl;
+                readline_ptr = reinterpret_cast<char * (*)(const char *)>(tmp_readline_ptr);
                 if (readline_ptr)
                 {
+    std::cout << " readOneLine 6： " << readline_ptr << std::endl;
                     break;
                 }
             }
         }
     }
 
+    std::cout << " readOneLine 7" << std::endl;
+    std::cout << " readOneLine 7" << std::endl;
     /// Minimal support for readline
     if (readline_ptr)
     {
+    std::cout << " readOneLine 8: " << readline_ptr << std::endl;
         char * line_read = (*readline_ptr)(prompt.c_str());
         if (!line_read)
             return ABORT;
@@ -182,6 +192,7 @@ LineReader::InputStatus LineReader::readOneLine(const String & prompt)
     else
 #endif
     {
+    std::cout << " readOneLine 9: " << readline_ptr << std::endl;
         std::cout << prompt;
         std::getline(std::cin, input);
         if (!std::cin.good())

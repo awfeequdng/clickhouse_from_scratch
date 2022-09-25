@@ -14,7 +14,7 @@
 #include <fcntl.h>
 #include <fstream>
 #include <fmt/format.h>
-
+#include <iostream>
 
 namespace
 {
@@ -124,55 +124,74 @@ ReplxxLineReader::ReplxxLineReader(
     replxx::Replxx::highlighter_callback_t highlighter_)
     : LineReader(history_file_path_, multiline_, std::move(extenders_), std::move(delimiters_)), highlighter(std::move(highlighter_))
 {
+    std::cout << "enter ReplxxLineReader con" << std::endl;
     using namespace std::placeholders;
     using Replxx = replxx::Replxx;
 
+    std::cout << "enter ReplxxLineReader con 1" << std::endl;
     if (!history_file_path.empty())
     {
+        std::cout << "enter ReplxxLineReader con 2" << std::endl;
         history_file_fd = open(history_file_path.c_str(), O_RDWR);
         if (history_file_fd < 0)
         {
+            std::cout << "enter ReplxxLineReader con 3" << std::endl;
             rx.print("Open of history file failed: %s\n", errnoToString(errno).c_str());
         }
         else
         {
+            std::cout << "enter ReplxxLineReader con 4" << std::endl;
             convertHistoryFile(history_file_path, rx);
 
+            std::cout << "enter ReplxxLineReader con 5" << std::endl;
             if (flock(history_file_fd, LOCK_SH))
             {
+            std::cout << "enter ReplxxLineReader con 6" << std::endl;
                 rx.print("Shared lock of history file failed: %s\n", errnoToString(errno).c_str());
             }
             else
             {
+            std::cout << "enter ReplxxLineReader con 7: history_file_path " << history_file_path << std::endl;
+                std::cout << "history_file_fd : " << history_file_fd << std::endl;
                 if (!rx.history_load(history_file_path))
                 {
+                    std::cout << "enter ReplxxLineReader con 7 - 1" << std::endl;
                     rx.print("Loading history failed: %s\n", errnoToString(errno).c_str());
                 }
+                std::cout << "enter ReplxxLineReader con 7 - 31" << std::endl;
 
                 if (flock(history_file_fd, LOCK_UN))
                 {
+                    std::cout << "enter ReplxxLineReader con 7 - 3" << std::endl;
                     rx.print("Unlock of history file failed: %s\n", errnoToString(errno).c_str());
                 }
+            std::cout << "enter ReplxxLineReader con 7 - 2" << std::endl;
             }
         }
     }
+            std::cout << "enter ReplxxLineReader con 8" << std::endl;
 
     rx.install_window_change_handler();
+            std::cout << "enter ReplxxLineReader con 9" << std::endl;
 
     auto callback = [&suggest] (const String & context, size_t context_size)
     {
+            std::cout << "enter ReplxxLineReader con 10" << std::endl;
         if (auto range = suggest.getCompletions(context, context_size))
             return Replxx::completions_t(range->first, range->second);
         return Replxx::completions_t();
     };
+            std::cout << "enter ReplxxLineReader con 11" << std::endl;
 
     rx.set_completion_callback(callback);
     rx.set_complete_on_empty(false);
     rx.set_word_break_characters(word_break_characters);
 
+            std::cout << "enter ReplxxLineReader con 12" << std::endl;
     if (highlighter)
         rx.set_highlighter_callback(highlighter);
 
+            std::cout << "enter ReplxxLineReader con 13" << std::endl;
     /// By default C-p/C-n binded to COMPLETE_NEXT/COMPLETE_PREV,
     /// bind C-p/C-n to history-previous/history-next like readline.
     rx.bind_key(Replxx::KEY::control('N'), [this](char32_t code) { return rx.invoke(Replxx::ACTION::HISTORY_NEXT, code); });
@@ -192,6 +211,7 @@ ReplxxLineReader::ReplxxLineReader(
     rx.bind_key(Replxx::KEY::control('W'), [this](char32_t code) { return rx.invoke(Replxx::ACTION::KILL_TO_WHITESPACE_ON_LEFT, code); });
 
     rx.bind_key(Replxx::KEY::meta('E'), [this](char32_t) { openEditor(); return Replxx::ACTION_RESULT::CONTINUE; });
+            std::cout << "enter ReplxxLineReader con 14" << std::endl;
 }
 
 ReplxxLineReader::~ReplxxLineReader()
@@ -202,14 +222,20 @@ ReplxxLineReader::~ReplxxLineReader()
 
 LineReader::InputStatus ReplxxLineReader::readOneLine(const String & prompt)
 {
+    std::cout << " ReplxxLineReader::readOneLine : prompt " << prompt << std::endl;
     input.clear();
+    std::cout << " ReplxxLineReader::readOneLine : 1 " << std::endl;
 
     const char* cinput = rx.input(prompt);
+    std::cout << " ReplxxLineReader::readOneLine : 2 " << std::endl;
     if (cinput == nullptr)
         return (errno != EAGAIN) ? ABORT : RESET_LINE;
+    std::cout << " ReplxxLineReader::readOneLine : 3 " << std::endl;
     input = cinput;
 
+    std::cout << " ReplxxLineReader::readOneLine : 4 " << std::endl;
     trim(input);
+    std::cout << " ReplxxLineReader::readOneLine : 5 " << std::endl;
     return INPUT_LINE;
 }
 

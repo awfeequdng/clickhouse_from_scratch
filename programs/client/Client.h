@@ -17,7 +17,7 @@ public:
 
 protected:
     bool executeMultiQuery(const String & all_queries_text) override;
-    bool processWithFuzzing(const String & full_query) override;
+    // bool processWithFuzzing(const String & full_query) override;
 
     void connect() override;
     void prepareForInteractive() override;
