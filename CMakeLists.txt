@@ -206,7 +206,7 @@ target_link_libraries(cfs
   ${CMAKE_DL_LIBS}
   lz4
   zstd
-  liblzma
+  lzma
   cityhash
   boost::headers_only
   boost::program_options
