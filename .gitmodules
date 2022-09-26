@@ -58,3 +58,6 @@
 [submodule "contrib/xz"]
 	path = contrib/xz
 	url = https://github.com/xz-mirror/xz
+[submodule "contrib/NuRaft"]
+	path = contrib/NuRaft
+	url = https://github.com/ClickHouse-Extras/NuRaft.git

@@ -31,3 +31,8 @@ endif ()
 # endif()
 add_subdirectory (xz)
 include_directories(${PROJECT_SOURCE_DIR}/contrib/xz/src/liblzma/api)
+
+message(STATUS "-------xxxxxxxxxxxxxx-------usenuraft: ${USE_NURAFT}")
+if (USE_NURAFT)
+  add_subdirectory(nuraft-cmake)
+endif()

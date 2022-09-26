@@ -27,7 +27,12 @@ struct ContextSharedPart;
 // class ContextAccess;
 class QueryStatus;
 class Session;
+class IDisk;
 
+using DiskPtr = std::shared_ptr<IDisk>;
+class DiskSelector;
+using DiskSelectorPtr = std::shared_ptr<const DiskSelector>;
+using DisksMap = std::map<String, DiskPtr>;
 // class IInputFormat;
 // class IOutputFormat;
 // using InputFormatPtr = std::shared_ptr<IInputFormat>;

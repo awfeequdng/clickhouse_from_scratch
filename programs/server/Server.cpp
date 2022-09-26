@@ -36,6 +36,7 @@
 #include "Common/config_version.h"
 #include "base/phdr_cache.h"
 #include "Common/formatReadable.h"
+#include <Disks/registerDisks.h>
 
 #if defined(OS_LINUX)
 #    include <sys/mman.h>
@@ -353,6 +354,7 @@ int Server::main(const std::vector<std::string> & /*args*/)
     Poco::Logger * log = &logger();
     MainThreadStatus::getInstance();
 
+    registerDisks();
 
     /** Context contains all that query execution is dependent:
       *  settings, available functions, data types, aggregate functions, databases, ...

@@ -24,6 +24,10 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL Clang)
 endif ()
 
 option(BUILD_SHARED_LIBS "Build shared libraries (.dll/.so) instead of static ones (.lib/.a)" ON)
+# Turns on all external libs like nuraft, ODBC, ...
+option(ENABLE_LIBRARIES "Enable all external libraries by default" ON)
+
+MESSAGE(STATUS "xxxxxxxxxxxxxxxxxxxEnable all external libraries by default ${ENABLE_LIBRARIES}")
 
 # 解决zstd.h中deprecated报错的问题
 add_definitions(-DZSTD_DISABLE_DEPRECATE_WARNINGS)
@@ -70,6 +74,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}/src/Formats)
 
 include (cmake/target.cmake)
 include (cmake/llvm.cmake)
+include (cmake/find/nuraft.cmake)
 
 include(FetchContent)                   # FetchContent_ functions.
 # find_package(PkgConfig REQUIRED)        # pkg_search_module function.
@@ -212,6 +217,7 @@ target_link_libraries(cfs
   boost::program_options
   boost::context
   readpassphrase
+  nuraft
 )
 
 if (USE_BZIP2)
