@@ -401,24 +401,24 @@ void Client::prepareForInteractive()
         std::cout << std::endl;
 
     /// Load Warnings at the beginning of connection
-    if (!config().has("no-warnings"))
-    {
-        try
-        {
-            std::vector<String> messages = loadWarningMessages();
-            if (!messages.empty())
-            {
-                std::cout << "Warnings:" << std::endl;
-                for (const auto & message : messages)
-                    std::cout << " * " << message << std::endl;
-                std::cout << std::endl;
-            }
-        }
-        catch (...)
-        {
-            /// Ignore exception
-        }
-    }
+    // if (!config().has("no-warnings"))
+    // {
+    //     try
+    //     {
+    //         std::vector<String> messages = loadWarningMessages();
+    //         if (!messages.empty())
+    //         {
+    //             std::cout << "Warnings:" << std::endl;
+    //             for (const auto & message : messages)
+    //                 std::cout << " * " << message << std::endl;
+    //             std::cout << std::endl;
+    //         }
+    //     }
+    //     catch (...)
+    //     {
+    //         /// Ignore exception
+    //     }
+    // }
 }
 
 

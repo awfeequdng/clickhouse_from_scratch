@@ -321,7 +321,7 @@ void ClientBase::initLogsOutputStream()
 
 void ClientBase::processTextAsSingleQuery(const String & full_query)
 {
-    std::cout << "processTextAsSingleQuery 1" << std::endl;
+    std::cout << "processTextAsSingleQuery 1: " << full_query << std::endl;
     String query_to_execute;
 
     query_to_execute = full_query;
@@ -358,7 +358,15 @@ void ClientBase::processOrdinaryQuery(const String & query_to_execute, ASTPtr pa
     {
         try
         {
-            std::cout << "before sendQuery " << std::endl;
+            std::cout << "before sendQuery :" << query_to_execute << std::endl;
+            // connection->sendQuery(
+            //     connection_parameters.timeouts,
+            //     query,
+            //     global_context->getCurrentQueryId(),
+            //     query_processing_stage,
+            //     &global_context->getSettingsRef(),
+            //     &global_context->getClientInfo(),
+            //     true);
             connection->sendQuery(
                 connection_parameters.timeouts,
                 query,
@@ -366,8 +374,10 @@ void ClientBase::processOrdinaryQuery(const String & query_to_execute, ASTPtr pa
                 query_processing_stage,
                 &global_context->getSettingsRef(),
                 &global_context->getClientInfo(),
-                true);
+                false);
 
+
+            std::cout << "after sendQuery :" << query_to_execute << std::endl;
             receiveResult(parsed_query);
 
             break;
@@ -454,13 +464,16 @@ void ClientBase::receiveResult(ASTPtr parsed_query)
             if (connection->poll(poll_interval))
                 break;
         }
+        std::cout << "enter receiveResult 10" << std::endl;
 
         if (!receiveAndProcessPacket(parsed_query, cancelled))
             break;
+        std::cout << "enter receiveResult 11" << std::endl;
     }
 
     if (cancelled && is_interactive)
         std::cout << "Query was cancelled." << std::endl;
+    std::cout << "enter receiveResult 13" << std::endl;
 }
 
 
@@ -469,6 +482,7 @@ void ClientBase::receiveResult(ASTPtr parsed_query)
 /// Output of result is suppressed if query was cancelled.
 bool ClientBase::receiveAndProcessPacket(ASTPtr parsed_query, bool cancelled)
 {
+    std::cout << "receiveAndProcessPacket 1" << std::endl;
     Packet packet = connection->receivePacket();
 
     switch (packet.type)
@@ -719,25 +733,20 @@ bool ClientBase::receiveEndOfQuery()
 void ClientBase::processParsedSingleQuery(const String & full_query, const String & query_to_execute,
         ASTPtr parsed_query, std::optional<bool> echo_query_, bool report_error)
 {
-    std::cout << "processParsedSingleQuery 1" << std::endl;
     resetOutput();
     have_error = false;
     client_exception.reset();
     server_exception.reset();
 
-    std::cout << "processParsedSingleQuery 2" << std::endl;
     if (echo_query_ && *echo_query_)
     {
-    std::cout << "processParsedSingleQuery 3" << std::endl;
         writeString(full_query, std_out);
         writeChar('\n', std_out);
         std_out.next();
     }
-    std::cout << "processParsedSingleQuery 4" << std::endl;
 
     if (is_interactive)
     {
-    std::cout << "processParsedSingleQuery 5" << std::endl;
         global_context->setCurrentQueryId("");
         // Generate a new query_id
         for (const auto & query_id_format : query_id_formats)
@@ -750,12 +759,10 @@ void ClientBase::processParsedSingleQuery(const String & full_query, const Strin
         }
     }
 
-    std::cout << "processParsedSingleQuery 6" << std::endl;
     processed_rows = 0;
     written_first_block = false;
     progress_indication.resetProgress();
     profile_events.watch.restart();
-    std::cout << "processParsedSingleQuery 7" << std::endl;
 
     {
         /// Temporarily apply query settings to context.
@@ -765,57 +772,51 @@ void ClientBase::processParsedSingleQuery(const String & full_query, const Strin
                 global_context->setSettings(*old_settings);
         });
 
-        if (!connection->checkConnected())
+        std::cout << "before connect " << std::endl;
+        if (!connection->checkConnected()) {
+            std::cout << "not connectted" << std::endl;
             connect();
+        }
+        std::cout << "after connect " << std::endl;
 
-        std::cout << "processParsedSingleQuery 8" << std::endl;
         processOrdinaryQuery(query_to_execute, parsed_query);
+
     }
-    std::cout << "processParsedSingleQuery 9" << std::endl;
 
     /// Always print last block (if it was not printed already)
     if (profile_events.last_block)
     {
-    std::cout << "processParsedSingleQuery 10" << std::endl;
         initLogsOutputStream();
         progress_indication.clearProgressOutput();
     }
-    std::cout << "processParsedSingleQuery 11" << std::endl;
 
     if (is_interactive)
     {
-    std::cout << "processParsedSingleQuery 12" << std::endl;
         std::cout << std::endl << processed_rows << " rows in set. Elapsed: " << progress_indication.elapsedSeconds() << " sec. ";
         progress_indication.writeFinalProgress();
         std::cout << std::endl << std::endl;
     }
     else if (print_time_to_stderr)
     {
-    std::cout << "processParsedSingleQuery 13" << std::endl;
         std::cerr << progress_indication.elapsedSeconds() << "\n";
     }
 
-    std::cout << "processParsedSingleQuery 14" << std::endl;
     if (have_error && report_error)
         processError(full_query);
 }
 
 bool ClientBase::processQueryText(const String & text)
 {
-    std::cout << "processQueryText 1: text " << text << std::endl;
     if (exit_strings.end() != exit_strings.find(trim(text, [](char c) { return isWhitespaceASCII(c) || c == ';'; })))
         return false;
 
     if (!is_multiquery)
     {
-        std::cout << "processQueryText 3: text " << text << std::endl;
         assert(!query_fuzzer_runs);
         processTextAsSingleQuery(text);
 
-        std::cout << "processQueryText 4: text " << text << std::endl;
         return true;
     }
-    std::cout << "processQueryText 5: text " << text << std::endl;
 
     return executeMultiQuery(text);
 }
@@ -823,12 +824,10 @@ bool ClientBase::processQueryText(const String & text)
 
 void ClientBase::runInteractive()
 {
-    std::cout << "enter runInteractive 1" << std::endl;
     if (config().has("query_id"))
         throw Exception("query_id could be specified only in non-interactive mode", ErrorCodes::BAD_ARGUMENTS);
     if (print_time_to_stderr)
         throw Exception("time option could be specified only in non-interactive mode", ErrorCodes::BAD_ARGUMENTS);
-    std::cout << "enter runInteractive 2" << std::endl;
 
     /// Initialize DateLUT here to avoid counting time spent here as query execution time.
     const auto local_tz = DateLUT::instance().getTimeZone();
@@ -837,14 +836,13 @@ void ClientBase::runInteractive()
     suggest.emplace();
     if (load_suggestions)
     {
-        std::cout << "enter runInteractive 3" << std::endl;
         /// Load suggestion data from the server.
-        if (global_context->getApplicationType() == Context::ApplicationType::CLIENT)
-            suggest->load<Connection>(global_context, connection_parameters, config().getInt("suggestion_limit"));
+        std::cout << "not support suggest yet." << std::endl;
+        // if (global_context->getApplicationType() == Context::ApplicationType::CLIENT)
+            // suggest->load<Connection>(global_context, connection_parameters, config().getInt("suggestion_limit"));
         // else if (global_context->getApplicationType() == Context::ApplicationType::LOCAL)
         //     suggest->load<LocalConnection>(global_context, connection_parameters, config().getInt("suggestion_limit"));
     }
-    std::cout << "enter runInteractive 4" << std::endl;
 
     if (home_path.empty())
     {
@@ -853,7 +851,6 @@ void ClientBase::runInteractive()
             home_path = home_path_cstr;
     }
 
-    std::cout << "enter runInteractive 5: home: " << home_path << std::endl;
     /// Initialize query_id_formats if any
     if (config().has("query_id_formats"))
     {
@@ -893,7 +890,6 @@ void ClientBase::runInteractive()
                 throw;
         }
     }
-    std::cout << "enter runInteractive 8: history " << history_file << std::endl;
 
     LineReader::Patterns query_extenders = {"\\"};
     LineReader::Patterns query_delimiters = {";", "\\G"};
@@ -913,41 +909,32 @@ void ClientBase::runInteractive()
     std::cout << "enter runInteractive 10" << std::endl;
     ReadlineLineReader lr(*suggest, history_file, config().has("multiline"), query_extenders, query_delimiters);
 #else
-    std::cout << "enter runInteractive 11" << std::endl;
     LineReader lr(history_file, config().has("multiline"), query_extenders, query_delimiters);
 #endif
 
-    std::cout << "enter runInteractive 12" << std::endl;
     /// Enable bracketed-paste-mode only when multiquery is enabled and multiline is
     ///  disabled, so that we are able to paste and execute multiline queries in a whole
     ///  instead of erroring out, while be less intrusive.
     if (config().has("multiquery") && !config().has("multiline"))
         lr.enableBracketedPaste();
 
-    std::cout << "enter runInteractive 13" << std::endl;
     do
     {
-        std::cout << "enter runInteractive 14" << std::endl;
         auto prop = prompt();
-        std::cout << "prop: " << prop << std::endl;
         auto input = lr.readLine(prop, ":-] ");
         // auto input = lr.readLine(prompt(), ":-] ");
         if (input.empty()) {
 
-            std::cout << "enter runInteractive 14 empty" << std::endl;
             break;
         }
 
-        std::cout << "enter runInteractive 15" << std::endl;
         has_vertical_output_suffix = false;
         if (input.ends_with("\\G"))
         {
-            std::cout << "enter runInteractive 16" << std::endl;
             input.resize(input.size() - 2);
             has_vertical_output_suffix = true;
         }
 
-            std::cout << "enter runInteractive 17" << std::endl;
         try
         {
             std::cout << "enter runInteractive 18: input " << input << std::endl;

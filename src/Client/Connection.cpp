@@ -374,7 +374,7 @@ void Connection::sendClusterNameAndSalt()
 
 bool Connection::ping()
 {
-    // LOG_TRACE(log_wrapper.get(), "Ping");
+    LOG_TRACE(log_wrapper.get(), "Ping");
 
     TimeoutSetter timeout_setter(*socket, sync_request_timeout, true);
     try
@@ -405,7 +405,7 @@ bool Connection::ping()
     catch (const Poco::Exception & e)
     {
 
-        std::cout << log_wrapper.get() << ":(not implemented) " << e.displayText() << std::endl;
+        std::cout << "log_wrapper.get() <<" ":(not implemented) " << e.displayText() << std::endl;
         // LOG_TRACE(log_wrapper.get(), e.displayText());
         return false;
     }
@@ -448,8 +448,10 @@ void Connection::sendQuery(
     const ClientInfo * client_info,
     bool with_pending_data)
 {
-    if (!connected)
+    if (!connected) {
+        std::cout << "sendQuery : " << query << ", not connected yet." << std::endl;
         connect(timeouts);
+    }
 
     /// Query is not executed within sendQuery() function.
     ///
@@ -481,8 +483,12 @@ void Connection::sendQuery(
     /// Client info.
     if (server_revision >= DBMS_MIN_REVISION_WITH_CLIENT_INFO)
     {
-        if (client_info && !client_info->empty())
+        std::cout << "sendQuery 9: " << query << std::endl;
+        if (client_info && !client_info->empty()) {
+
+            std::cout << "sendQuery 9-1: " << query << std::endl;
             client_info->write(*out, server_revision);
+        }
         else
             ClientInfo().write(*out, server_revision);
     }
@@ -490,6 +496,7 @@ void Connection::sendQuery(
     /// Per query settings.
     if (settings)
     {
+        std::cout << "pass query settings " << query << std::endl;
         auto settings_format = (server_revision >= DBMS_MIN_REVISION_WITH_SETTINGS_SERIALIZED_AS_STRINGS) ? SettingsWriteFormat::STRINGS_WITH_FLAGS
                                                                                                           : SettingsWriteFormat::BINARY;
         settings->write(*out, settings_format);
@@ -500,6 +507,7 @@ void Connection::sendQuery(
     /// Interserver secret
     if (server_revision >= DBMS_MIN_REVISION_WITH_INTERSERVER_SECRET)
     {
+        std::cout << "sendQuery 14 " << query << std::endl;
         /// Hash
         ///
         /// Send correct hash only for !INITIAL_QUERY, due to:
@@ -508,6 +516,7 @@ void Connection::sendQuery(
         ///   (since there is no secure/unsecure changes)
         if (client_info && !cluster_secret.empty() && client_info->query_kind != ClientInfo::QueryKind::INITIAL_QUERY)
         {
+        std::cout << "sendQuery 15 " << query << std::endl;
 #if USE_SSL
             std::string data(salt);
             data += cluster_secret;
@@ -533,19 +542,21 @@ void Connection::sendQuery(
 
     writeStringBinary(query, *out);
 
-    maybe_compressed_in.reset();
-    maybe_compressed_out.reset();
-    block_in.reset();
-    block_logs_in.reset();
-    block_profile_events_in.reset();
-    block_out.reset();
+    out->next();
+    // maybe_compressed_in.reset();
+    // maybe_compressed_out.reset();
+    // block_in.reset();
+    // block_logs_in.reset();
+    // block_profile_events_in.reset();
+    // block_out.reset();
 
-    /// Send empty block which means end of data.
-    if (!with_pending_data)
-    {
-        sendData(Block(), "", false);
-        out->next();
-    }
+    // /// Send empty block which means end of data.
+    // if (!with_pending_data)
+    // {
+    //     std::cout << "sendQuery sendData Block " << std::endl;
+    //     sendData(Block(), "", false);
+    //     out->next();
+    // }
 }
 
 
@@ -787,66 +798,82 @@ Packet Connection::receivePacket()
         /// Have we already read packet type?
         if (last_input_packet_type)
         {
+            std::cout << "Connection::receivePacket 1" << std::endl;
             res.type = *last_input_packet_type;
             last_input_packet_type.reset();
         }
         else
         {
+            std::cout << "Connection::receivePacket 2" << std::endl;
             readVarUInt(res.type, *in);
         }
+            std::cout << "Connection::receivePacket 3" << std::endl;
 
         switch (res.type)
         {
             case Protocol::Server::Data: [[fallthrough]];
             case Protocol::Server::Totals: [[fallthrough]];
             case Protocol::Server::Extremes:
+            std::cout << "Connection::receivePacket 4" << std::endl;
                 res.block = receiveData();
                 return res;
 
             case Protocol::Server::Exception:
+            std::cout << "Connection::receivePacket 5" << std::endl;
                 res.exception = receiveException();
                 return res;
 
             case Protocol::Server::Progress:
+            std::cout << "Connection::receivePacket 6" << std::endl;
                 res.progress = receiveProgress();
                 return res;
 
             case Protocol::Server::ProfileInfo:
+            std::cout << "Connection::receivePacket 7" << std::endl;
                 res.profile_info = receiveProfileInfo();
                 return res;
 
             case Protocol::Server::Log:
+            std::cout << "Connection::receivePacket 8" << std::endl;
                 res.block = receiveLogData();
                 return res;
 
             case Protocol::Server::TableColumns:
+            std::cout << "Connection::receivePacket 9" << std::endl;
                 res.multistring_message = receiveMultistringMessage(res.type);
                 return res;
 
             case Protocol::Server::EndOfStream:
+                std::cout << "Connection::receivePacket EndOfStream" << std::endl;
                 return res;
 
             case Protocol::Server::PartUUIDs:
+                std::cout << "Connection::receivePacket 11" << std::endl;
                 readVectorBinary(res.part_uuids, *in);
                 return res;
 
             case Protocol::Server::ReadTaskRequest:
+                std::cout << "Connection::receivePacket 12" << std::endl;
                 return res;
 
             case Protocol::Server::ProfileEvents:
+                std::cout << "Connection::receivePacket 13" << std::endl;
                 res.block = receiveProfileEvents();
                 return res;
 
             default:
+                std::cout << "Connection::receivePacket 14" << std::endl;
                 /// In unknown state, disconnect - to not leave unsynchronised connection.
                 disconnect();
                 throw Exception("Unknown packet "
                     + toString(res.type)
                     + " from server " + getDescription(), ErrorCodes::UNKNOWN_PACKET_FROM_SERVER);
         }
+                std::cout << "Connection::receivePacket 15" << std::endl;
     }
     catch (Exception & e)
     {
+                std::cout << "Connection::receivePacket 16" << std::endl;
         /// This is to consider ATTEMPT_TO_READ_AFTER_EOF as a remote exception.
         e.setRemoteException();
 

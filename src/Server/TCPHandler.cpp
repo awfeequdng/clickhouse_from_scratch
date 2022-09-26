@@ -255,8 +255,16 @@ void TCPHandler::runImpl()
         std::cout << "main loop 4" << std::endl;
 
         /// If we need to shut down, or client disconnects.
-        if (server.isCancelled() || in->eof())
+        if (server.isCancelled() ) {
+            std::cout << "server.isCancelled: " << server.isCancelled() << std::endl;
             break;
+        }
+        std::cout << "main loop 4 -1" << std::endl;
+        if (in->eof()) {
+            std::cout << "in->eof(): " << in->eof() << std::endl;
+            break;
+        }
+
 
         std::cout << "main loop 5" << std::endl;
         Stopwatch watch;
@@ -277,24 +285,31 @@ void TCPHandler::runImpl()
             /// If a user passed query-local timeouts, reset socket to initial state at the end of the query
             SCOPE_EXIT({state.timeout_setter.reset();});
 
+            /** If Query - process it. If Ping or Cancel - go back to the beginning.
+             *  There may come settings for a separate query that modify `query_context`.
+             *  It's possible to receive part uuids packet before the query, so then receivePacket has to be called twice.
+             */
             if (!receivePacket()) {
                 LOG_DEBUG(log, "receive packet failed.");
                 std::cout << "main loop 8" << std::endl;
                 continue;
             }
-            LOG_INFO(log, "receive packet success.");
+            LOG_INFO(log, "receive packet success. query: {}", state.query);
+
 
             /** If part_uuids got received in previous packet, trying to read again.
               */
-            if (state.empty() && state.part_uuids_to_ignore && !receivePacket())
-                continue;
+            // if (state.empty() && state.part_uuids_to_ignore && !receivePacket())
+            //     continue;
+            // if (state.empty() && !receivePacket())
+            //     continue;
 
             std::cout << "main loop 9" << std::endl;
             /// Sync timeouts on client and server during current query to avoid dangling queries on server
             /// NOTE: We use send_timeout for the receive timeout and vice versa (change arguments ordering in TimeoutSetter),
             ///  because send_timeout is client-side setting which has opposite meaning on the server side.
             /// NOTE: these settings are applied only for current connection (not for distributed tables' connections)
-            state.timeout_setter = std::make_unique<TimeoutSetter>(socket(), receive_timeout, send_timeout);
+            // state.timeout_setter = std::make_unique<TimeoutSetter>(socket(), receive_timeout, send_timeout);
             std::cout << "main loop 10" << std::endl;
 
 
@@ -341,17 +356,18 @@ void TCPHandler::receiveQuery()
     state.is_empty = false;
     std::cout << "state.is_empyt: " << state.is_empty << std::endl;
     readStringBinary(state.query_id, *in);
+    std::cout << "receive query_id: " << state.query_id << std::endl;
 
     /// In interserer mode,
     /// initial_user can be empty in case of Distributed INSERT via Buffer/Kafka,
     /// (i.e. when the INSERT is done with the global context w/o user),
     /// so it is better to reset session to avoid using old user.
-    if (is_interserver_mode)
-    {
-        ClientInfo original_session_client_info = session->getClientInfo();
-        session = std::make_unique<Session>(server.context(), ClientInfo::Interface::TCP_INTERSERVER);
-        session->getClientInfo() = original_session_client_info;
-    }
+    // if (is_interserver_mode)
+    // {
+    //     ClientInfo original_session_client_info = session->getClientInfo();
+    //     session = std::make_unique<Session>(server.context(), ClientInfo::Interface::TCP_INTERSERVER);
+    //     session->getClientInfo() = original_session_client_info;
+    // }
 
     /// Read client info.
     ClientInfo client_info = session->getClientInfo();
@@ -371,6 +387,7 @@ void TCPHandler::receiveQuery()
     if (client_tcp_protocol_version >= DBMS_MIN_REVISION_WITH_INTERSERVER_SECRET)
     {
         readStringBinary(received_hash, *in, 32);
+        std::cout << "receive hash: " << received_hash << std::endl;
     }
 
     readVarUInt(stage, *in);
@@ -383,40 +400,6 @@ void TCPHandler::receiveQuery()
     readStringBinary(state.query, *in);
 
     LOG_INFO(log, "receive query: {}", state.query);
-
-//     if (is_interserver_mode)
-//     {
-// #if USE_SSL
-//         std::string data(salt);
-//         data += cluster_secret;
-//         data += state.query;
-//         data += state.query_id;
-//         data += client_info.initial_user;
-
-//         if (received_hash.size() != 32)
-//             throw NetException("Unexpected hash received from client", ErrorCodes::UNEXPECTED_PACKET_FROM_CLIENT);
-
-//         std::string calculated_hash = encodeSHA256(data);
-
-//         if (calculated_hash != received_hash)
-//             throw NetException("Hash mismatch", ErrorCodes::UNEXPECTED_PACKET_FROM_CLIENT);
-//         /// TODO: change error code?
-
-//         if (client_info.initial_user.empty())
-//         {
-//             LOG_DEBUG(log, "User (no user, interserver mode)");
-//         }
-//         else
-//         {
-//             LOG_DEBUG(log, "User (initial, interserver mode): {}", client_info.initial_user);
-//             session->authenticate(AlwaysAllowCredentials{client_info.initial_user}, client_info.initial_address);
-//         }
-// #else
-//         throw Exception(
-//             "Inter-server secret support is disabled, because ClickHouse was built without SSL library",
-//             ErrorCodes::SUPPORT_IS_DISABLED);
-// #endif
-//     }
 
     query_context = session->makeQueryContext(std::move(client_info));
 
@@ -685,14 +668,15 @@ bool TCPHandler::receivePacket()
                 return receiveUnexpectedData(false);
             std::cout << "state.empty: " << state.empty() << std::endl;
             if (state.empty()) {
-                receiveUnexpectedData(false);
-                // receiveUnexpectedData(true);
+                // receiveUnexpectedData(false);
+                receiveUnexpectedData(true);
                 return true;
             }
             return receiveData(packet_type == Protocol::Client::Scalar);
         case Protocol::Client::Ping:
             writeVarUInt(Protocol::Server::Pong, *out);
             out->next();
+            std::cout << "receive Ping and send Pong" << std::endl;
             return false;
 
         case Protocol::Client::Cancel:
