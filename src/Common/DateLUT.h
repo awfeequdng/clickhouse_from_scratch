@@ -2,7 +2,9 @@
 
 #include "DateLUTImpl.h"
 
-#include "defines.h"
+#include <base/defines.h>
+
+#include <boost/noncopyable.hpp>
 
 #include <atomic>
 #include <memory>
@@ -11,7 +13,7 @@
 
 
 /// This class provides lazy initialization and lookup of singleton DateLUTImpl objects for a given timezone.
-class DateLUT
+class DateLUT : private boost::noncopyable
 {
 public:
     /// Return singleton DateLUTImpl instance for the default time zone.

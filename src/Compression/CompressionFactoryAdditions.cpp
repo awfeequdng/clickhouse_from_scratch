@@ -117,6 +117,7 @@ ASTPtr CompressionCodecFactory::validateCodecAndGetPreprocessedAST(
                     };
 
                     ISerialization::SubstreamPath path;
+                    // column_type->getDefaultSerialization()->enumerateStreams(path, callback, column_type);
                     column_type->getDefaultSerialization()->enumerateStreams(path, callback, column_type, nullptr);
 
                     if (!result_codec)

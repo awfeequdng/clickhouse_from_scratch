@@ -1,14 +1,22 @@
 #pragma once
-
+#include <Core/Block.h>
+#include <Core/NamesAndTypes.h>
+#include <Core/Settings.h>
 #include <Core/UUID.h>
 #include <Interpreters/ClientInfo.h>
 #include <Interpreters/Context_fwd.h>
 #include <Common/OpenTelemetryTraceContext.h>
 #include <Poco/Util/AbstractConfiguration.h>
+#include <Common/MultiVersion.h>
+#include <Common/OpenTelemetryTraceContext.h>
+#include <Common/RemoteHostFilter.h>
+#include <Common/isLocalAddress.h>
+
 #include <base/types.h>
 #include <base/StringRef.h>
 #include "Core/include/config_core.h"
-#include "Core/Settings.h"
+#include <boost/container/flat_set.hpp>
+
 #include <IO/ReadSettings.h>
 #include <functional>
 #include <memory>
@@ -22,12 +30,16 @@ namespace Poco::Net { class IPAddress; }
 
 namespace DB
 {
-
+struct Progress;
+struct FileProgress;
 struct ContextSharedPart;
 // class ContextAccess;
 class QueryStatus;
 class Session;
 class IDisk;
+
+class BackgroundSchedulePool;
+struct BackgroundTaskSchedulingSettings;
 
 using DiskPtr = std::shared_ptr<IDisk>;
 class DiskSelector;
@@ -38,7 +50,9 @@ using DisksMap = std::map<String, DiskPtr>;
 // using InputFormatPtr = std::shared_ptr<IInputFormat>;
 // using OutputFormatPtr = std::shared_ptr<IOutputFormat>;
 
-// using ReadTaskCallback = std::function<String()>;
+
+class Throttler;
+using ThrottlerPtr = std::shared_ptr<Throttler>;
 
 /// An empty interface for an arbitrary object that may be attached by a shared pointer
 /// to query context, when using ClickHouse as a library.
@@ -92,6 +106,11 @@ private:
     String default_format;  /// Format, used when server formats data by itself and if query does not have FORMAT specification.
                             /// Thus, used in HTTP interface. If not specified - then some globally default format is used.
 
+    using ProgressCallback = std::function<void(const Progress & progress)>;
+    ProgressCallback progress_callback;  /// Callback for tracking progress of query execution.
+
+    using FileProgressCallback = std::function<void(const FileProgress & progress)>;
+    FileProgressCallback file_progress_callback; /// Callback for tracking progress of file loading.
     /// Record entities accessed by current query, and store this information in system.query_log.
     struct QueryAccessInfo
     {
@@ -195,6 +214,14 @@ public:
     String getDictionariesLibPath() const;
     String getUserScriptsPath() const;
     time_t getUptimeSeconds() const;
+
+    BackgroundSchedulePool & getBufferFlushSchedulePool() const;
+    BackgroundSchedulePool & getSchedulePool() const;
+    BackgroundSchedulePool & getMessageBrokerSchedulePool() const;
+    BackgroundSchedulePool & getDistributedSchedulePool() const;
+
+    ThrottlerPtr getReplicatedFetchesThrottler() const;
+    ThrottlerPtr getReplicatedSendsThrottler() const;
 
     /// A list of warnings about server configuration to place in `system.warnings` table.
     Strings getWarnings() const;
@@ -345,6 +372,13 @@ public:
     const IHostContextPtr & getHostContext() const;
     /** Get settings for reading from filesystem. */
     ReadSettings getReadSettings() const;
+
+    void setProgressCallback(ProgressCallback callback);
+    /// Used in executeQuery() to pass it to the QueryPipeline.
+    ProgressCallback getProgressCallback() const;
+
+    void setFileProgressCallback(FileProgressCallback && callback) { file_progress_callback = callback; }
+    FileProgressCallback getFileProgressCallback() const { return file_progress_callback; }
 
 private:
     std::unique_lock<std::recursive_mutex> getLock() const;

@@ -1,8 +1,15 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#include <Common/ProfileEvents.h>
 #include <Common/Exception.h>
 #include <IO/OpenedFile.h>
+
+
+namespace ProfileEvents
+{
+    extern const Event FileOpen;
+}
 
 namespace DB
 {
@@ -17,6 +24,8 @@ namespace ErrorCodes
 
 void OpenedFile::open(int flags)
 {
+    ProfileEvents::increment(ProfileEvents::FileOpen);
+
     fd = ::open(file_name.c_str(), (flags == -1 ? 0 : flags) | O_RDONLY | O_CLOEXEC);
 
     if (-1 == fd)
@@ -51,6 +60,7 @@ void OpenedFile::close()
         throw Exception("Cannot close file", ErrorCodes::CANNOT_CLOSE_FILE);
 
     fd = -1;
+    metric_increment.destroy();
 }
 
 }

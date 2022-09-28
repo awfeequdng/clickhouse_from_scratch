@@ -1,3 +1,10 @@
+option (ENABLE_BROTLI "Enable brotli" ${ENABLE_LIBRARIES})
+
+if (NOT ENABLE_BROTLI)
+    message(STATUS "Not using brotli")
+    return()
+endif()
+
 set(BROTLI_SOURCE_DIR "${PROJECT_SOURCE_DIR}/contrib/brotli/c")
 set(BROTLI_BINARY_DIR "${PROJECT_BINARY_DIR}/contrib/brotli/c")
 
@@ -10,6 +17,7 @@ set(SRCS
     "${BROTLI_SOURCE_DIR}/dec/decode.c"
     "${BROTLI_SOURCE_DIR}/enc/encode.c"
     "${BROTLI_SOURCE_DIR}/enc/dictionary_hash.c"
+    "${BROTLI_SOURCE_DIR}/enc/compound_dictionary.c"
     "${BROTLI_SOURCE_DIR}/enc/cluster.c"
     "${BROTLI_SOURCE_DIR}/enc/entropy_encode.c"
     "${BROTLI_SOURCE_DIR}/enc/literal_cost.c"
@@ -31,12 +39,15 @@ set(SRCS
     "${BROTLI_SOURCE_DIR}/common/platform.c"
     "${BROTLI_SOURCE_DIR}/common/context.c"
     "${BROTLI_SOURCE_DIR}/common/constants.c"
+    "${BROTLI_SOURCE_DIR}/common/shared_dictionary.c"
 )
 
-add_library(brotli ${SRCS})
+add_library(_brotli ${SRCS})
+add_library(ch_contrib::brotli ALIAS _brotli)
 
-target_include_directories(brotli PUBLIC "${BROTLI_SOURCE_DIR}/include")
+target_include_directories(_brotli SYSTEM BEFORE PUBLIC "${BROTLI_SOURCE_DIR}/include")
 
 if(M_LIBRARY)
-    target_link_libraries(brotli PRIVATE ${M_LIBRARY})
+    target_link_libraries(_brotli PRIVATE ${M_LIBRARY})
 endif()
+target_compile_definitions(_brotli PRIVATE BROTLI_BUILD_PORTABLE=1)

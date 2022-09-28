@@ -1,10 +1,17 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <unistd.h>
+
+#include <Common/ProfileEvents.h>
 
 #include <IO/WriteBufferFromFile.h>
 #include <IO/WriteHelpers.h>
+
+
+namespace ProfileEvents
+{
+    extern const Event FileOpen;
+}
 
 namespace DB
 {
@@ -26,6 +33,7 @@ WriteBufferFromFile::WriteBufferFromFile(
     size_t alignment)
     : WriteBufferFromFileDescriptor(-1, buf_size, existing_memory, alignment, file_name_)
 {
+    ProfileEvents::increment(ProfileEvents::FileOpen);
 
 #ifdef __APPLE__
     bool o_direct = (flags != -1) && (flags & O_DIRECT);
@@ -61,17 +69,18 @@ WriteBufferFromFile::WriteBufferFromFile(
     fd_ = -1;
 }
 
-
 WriteBufferFromFile::~WriteBufferFromFile()
+{
+    finalize();
+    ::close(fd);
+}
+
+void WriteBufferFromFile::finalizeImpl()
 {
     if (fd < 0)
         return;
 
-    /// FIXME move final flush into the caller
-
     next();
-
-    ::close(fd);
 }
 
 
@@ -87,6 +96,7 @@ void WriteBufferFromFile::close()
         throw Exception("Cannot close file", ErrorCodes::CANNOT_CLOSE_FILE);
 
     fd = -1;
+    metric_increment.destroy();
 }
 
 }

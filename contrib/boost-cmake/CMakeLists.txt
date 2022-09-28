@@ -27,25 +27,21 @@ target_include_directories (_boost_headers_only SYSTEM BEFORE INTERFACE ${LIBRAR
 
 # asio
 
-target_compile_definitions (_boost_headers_only INTERFACE
-  BOOST_ASIO_STANDALONE=1
-  # Avoid using of deprecated in c++ > 17 std::result_of
-  BOOST_ASIO_HAS_STD_INVOKE_RESULT=1
-)
+target_compile_definitions (_boost_headers_only INTERFACE BOOST_ASIO_STANDALONE=1)
 
 # iostreams
 
-# set (SRCS_IOSTREAMS
-#     "${LIBRARY_DIR}/libs/iostreams/src/file_descriptor.cpp"
-#     "${LIBRARY_DIR}/libs/iostreams/src/gzip.cpp"
-#     "${LIBRARY_DIR}/libs/iostreams/src/mapped_file.cpp"
-#     "${LIBRARY_DIR}/libs/iostreams/src/zlib.cpp"
-# )
+set (SRCS_IOSTREAMS
+    "${LIBRARY_DIR}/libs/iostreams/src/file_descriptor.cpp"
+    "${LIBRARY_DIR}/libs/iostreams/src/gzip.cpp"
+    "${LIBRARY_DIR}/libs/iostreams/src/mapped_file.cpp"
+    "${LIBRARY_DIR}/libs/iostreams/src/zlib.cpp"
+)
 
-# add_library (_boost_iostreams ${SRCS_IOSTREAMS})
-# add_library (boost::iostreams ALIAS _boost_iostreams)
-# target_include_directories (_boost_iostreams PRIVATE ${LIBRARY_DIR})
-# target_link_libraries (_boost_iostreams PRIVATE ch_contrib::zlib)
+add_library (_boost_iostreams ${SRCS_IOSTREAMS})
+add_library (boost::iostreams ALIAS _boost_iostreams)
+target_include_directories (_boost_iostreams PRIVATE ${LIBRARY_DIR})
+target_link_libraries (_boost_iostreams PRIVATE ch_contrib::zlib)
 
 # program_options
 
@@ -114,7 +110,7 @@ if (SANITIZE AND (SANITIZE STREQUAL "address" OR SANITIZE STREQUAL "thread"))
             "${LIBRARY_DIR}/libs/context/src/continuation.cpp"
     )
 endif()
-if (ARCH_AARCH64)
+if (ARCH_ARM)
     set (SRCS_CONTEXT ${SRCS_CONTEXT}
         "${LIBRARY_DIR}/libs/context/src/asm/jump_arm64_aapcs_elf_gas.S"
         "${LIBRARY_DIR}/libs/context/src/asm/make_arm64_aapcs_elf_gas.S"

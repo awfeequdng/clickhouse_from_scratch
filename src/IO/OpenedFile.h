@@ -1,6 +1,14 @@
 #pragma once
 
+#include <Common/CurrentMetrics.h>
 #include <memory>
+
+
+namespace CurrentMetrics
+{
+    extern const Metric OpenFileForRead;
+}
+
 
 namespace DB
 {
@@ -21,6 +29,8 @@ public:
 private:
     std::string file_name;
     int fd = -1;
+
+    CurrentMetrics::Increment metric_increment{CurrentMetrics::OpenFileForRead};
 
     void open(int flags);
 };

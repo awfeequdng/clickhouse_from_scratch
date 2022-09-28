@@ -1,10 +1,20 @@
 #pragma once
 
+#include <boost/noncopyable.hpp>
 
+#include <Common/ProfileEvents.h>
 #include <Common/Allocator.h>
 
 #include <Common/Exception.h>
 #include <Core/Defines.h>
+
+
+namespace ProfileEvents
+{
+    extern const Event IOBufferAllocs;
+    extern const Event IOBufferAllocBytes;
+}
+
 
 namespace DB
 {
@@ -15,7 +25,7 @@ namespace DB
   * Also allows to allocate aligned piece of memory (to use with O_DIRECT, for example).
   */
 template <typename Allocator = Allocator<false>>
-struct Memory : Allocator
+struct Memory : boost::noncopyable, Allocator
 {
     /// Padding is needed to allow usage of 'memcpySmallAllowReadWriteOverflow15' function with this buffer.
     static constexpr size_t pad_right = 15;
@@ -81,6 +91,7 @@ struct Memory : Allocator
             size_t new_capacity = align(new_size, alignment) + pad_right;
 
             size_t diff = new_capacity - m_capacity;
+            ProfileEvents::increment(ProfileEvents::IOBufferAllocBytes, diff);
 
             m_data = static_cast<char *>(Allocator::realloc(m_data, m_capacity, new_capacity, alignment));
             m_capacity = new_capacity;
@@ -107,6 +118,9 @@ private:
             m_data = nullptr;
             return;
         }
+
+        ProfileEvents::increment(ProfileEvents::IOBufferAllocs);
+        ProfileEvents::increment(ProfileEvents::IOBufferAllocBytes, m_capacity);
 
         size_t new_capacity = align(m_capacity, alignment) + pad_right;
         m_data = static_cast<char *>(Allocator::alloc(new_capacity, alignment));

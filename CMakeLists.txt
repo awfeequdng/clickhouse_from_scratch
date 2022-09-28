@@ -45,10 +45,6 @@ set (CONFIG_COMMON "${CMAKE_CURRENT_BINARY_DIR}/src/Common/config.h")
 
 include (./cmake/version.cmake)
 message (STATUS "Will build ${VERSION_FULL} revision ${VERSION_REVISION} ${VERSION_OFFICIAL}")
-configure_file (src/Common/config.h.in ${CONFIG_COMMON})
-configure_file (src/Common/config_version.h.in ${CONFIG_VERSION})
-configure_file (src/Core/config_core.h.in "${CMAKE_CURRENT_BINARY_DIR}/src/Core/include/config_core.h")
-configure_file (src/Formats/config_formats.h.in "${CMAKE_CURRENT_BINARY_DIR}/src/Formats/config_formats.h")
 
 # option (USE_BZIP2 "Use bzip2 library" ON)
 
@@ -125,7 +121,7 @@ endfunction()
 # add_cfs_dep(fmt https://github.com/fmtlib/fmt.git 9.0.0)
 # add_cfs_dep(gtest https://github.com/google/googletest.git release-1.10.0)
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/poco)
+# add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/poco)
 # link_directories(${CMAKE_CURRENT_BINARY_DIR}/lib)
 # link_directories(poco_build/lib)
 
@@ -157,9 +153,9 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/base/readpassphrase)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/contrib/miniselect/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/contrib/pdqsort)
 
-include_directories(contrib/poco/Net/include)
-include_directories(contrib/poco/Foundation/include)
-include_directories(contrib/poco/Util/include)
+# include_directories(contrib/poco/Net/include)
+# include_directories(contrib/poco/Foundation/include)
+# include_directories(contrib/poco/Util/include)
 
 # include_directories(contrib/pcg-random/include)
 
@@ -209,15 +205,21 @@ target_link_libraries(cfs
   magic_enum
   fast_float
   ${CMAKE_DL_LIBS}
-  lz4
-  zstd
-  liblzma
+  ch_contrib::lz4
+  ch_contrib::zstd
+  ch_contrib::zlib
+  ch_contrib::xz
+  ch_contrib::bzip2
+  ch_contrib::brotli
   cityhash
   boost::headers_only
   boost::program_options
   boost::context
   readpassphrase
-  nuraft
+  ch_contrib::nuraft
+  ch_contrib::abseil_swiss_tables
+  ch_contrib::re2
+  ch_contrib::re2_st
 )
 
 if (USE_BZIP2)
@@ -344,3 +346,9 @@ endfunction()
 #         add_px_test(${PX_TEST} ${PX_TEST_CC} unittest ${EXCLUDE_OR_NOT} NO_UNITY)
 #     endforeach ()
 # endif() # MAKE_TESTS
+
+configure_file (src/Common/config.h.in ${CONFIG_COMMON})
+configure_file (src/Common/config_version.h.in ${CONFIG_VERSION})
+configure_file (src/Core/config_core.h.in "${CMAKE_CURRENT_BINARY_DIR}/src/Core/include/config_core.h")
+configure_file (src/Formats/config_formats.h.in "${CMAKE_CURRENT_BINARY_DIR}/src/Formats/config_formats.h")
+

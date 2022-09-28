@@ -13,7 +13,9 @@
 #include <Common/thread_local_rng.h>
 #include <Common/FieldVisitorToString.h>
 #include <Formats/FormatFactory.h>
-// #include <Core/Settings.h>
+#include <Core/Settings.h>
+#include <Core/BackgroundSchedulePool.h>
+#include <Common/Throttler.h>
 #include <Interpreters/Context.h>
 #include <Interpreters/Session.h>
 #include <IO/ReadBufferFromFile.h>
@@ -23,6 +25,24 @@
 
 
 namespace fs = std::filesystem;
+
+namespace ProfileEvents
+{
+    extern const Event ContextLock;
+}
+
+namespace CurrentMetrics
+{
+    extern const Metric ContextLockWait;
+    extern const Metric BackgroundMovePoolTask;
+    extern const Metric BackgroundSchedulePoolTask;
+    extern const Metric BackgroundBufferFlushSchedulePoolTask;
+    extern const Metric BackgroundDistributedSchedulePoolTask;
+    extern const Metric BackgroundMessageBrokerSchedulePoolTask;
+    extern const Metric BackgroundMergesAndMutationsPoolTask;
+    extern const Metric BackgroundFetchesPoolTask;
+    extern const Metric BackgroundCommonPoolTask;
+}
 
 namespace DB
 {
@@ -64,6 +84,15 @@ struct ContextSharedPart
     String tmp_path;                                        /// Path to the temporary files that occur when processing the request.
     ConfigurationPtr users_config;                          /// Config with the users, profiles and quotas sections.
     std::vector<String> warnings;                           /// Store warning messages about server configuration.
+
+    mutable std::optional<BackgroundSchedulePool> buffer_flush_schedule_pool; /// A thread pool that can do background flush for Buffer tables.
+    mutable std::optional<BackgroundSchedulePool> schedule_pool;    /// A thread pool that can run different jobs in background (used in replicated tables)
+    mutable std::optional<BackgroundSchedulePool> distributed_schedule_pool; /// A thread pool that can run different jobs in background (used for distributed sends)
+    mutable std::optional<BackgroundSchedulePool> message_broker_schedule_pool; /// A thread pool that can run different jobs in background (used for message brokers, like RabbitMQ and Kafka)
+
+    mutable ThrottlerPtr replicated_fetches_throttler; /// A server-wide throttler for replicated fetches
+    mutable ThrottlerPtr replicated_sends_throttler; /// A server-wide throttler for replicated sends
+
 
     std::map<String, UInt16> server_ports;
 
@@ -174,6 +203,81 @@ Context::~Context() = default;
 std::unique_lock<std::recursive_mutex> Context::getLock() const
 {
     return std::unique_lock(shared->mutex);
+}
+
+void Context::setProgressCallback(ProgressCallback callback)
+{
+    /// Callback is set to a session or to a query. In the session, only one query is processed at a time. Therefore, the lock is not needed.
+    progress_callback = callback;
+}
+
+ProgressCallback Context::getProgressCallback() const
+{
+    return progress_callback;
+}
+
+BackgroundSchedulePool & Context::getBufferFlushSchedulePool() const
+{
+    auto lock = getLock();
+    if (!shared->buffer_flush_schedule_pool)
+        shared->buffer_flush_schedule_pool.emplace(
+            settings.background_buffer_flush_schedule_pool_size,
+            CurrentMetrics::BackgroundBufferFlushSchedulePoolTask,
+            "BgBufSchPool");
+    return *shared->buffer_flush_schedule_pool;
+}
+
+BackgroundSchedulePool & Context::getSchedulePool() const
+{
+    auto lock = getLock();
+    if (!shared->schedule_pool)
+        shared->schedule_pool.emplace(
+            settings.background_schedule_pool_size,
+            CurrentMetrics::BackgroundSchedulePoolTask,
+            "BgSchPool");
+    return *shared->schedule_pool;
+}
+
+BackgroundSchedulePool & Context::getDistributedSchedulePool() const
+{
+    auto lock = getLock();
+    if (!shared->distributed_schedule_pool)
+        shared->distributed_schedule_pool.emplace(
+            settings.background_distributed_schedule_pool_size,
+            CurrentMetrics::BackgroundDistributedSchedulePoolTask,
+            "BgDistSchPool");
+    return *shared->distributed_schedule_pool;
+}
+
+BackgroundSchedulePool & Context::getMessageBrokerSchedulePool() const
+{
+    auto lock = getLock();
+    if (!shared->message_broker_schedule_pool)
+        shared->message_broker_schedule_pool.emplace(
+            settings.background_message_broker_schedule_pool_size,
+            CurrentMetrics::BackgroundMessageBrokerSchedulePoolTask,
+            "BgMBSchPool");
+    return *shared->message_broker_schedule_pool;
+}
+
+ThrottlerPtr Context::getReplicatedFetchesThrottler() const
+{
+    auto lock = getLock();
+    if (!shared->replicated_fetches_throttler)
+        shared->replicated_fetches_throttler = std::make_shared<Throttler>(
+            settings.max_replicated_fetches_network_bandwidth_for_server);
+
+    return shared->replicated_fetches_throttler;
+}
+
+ThrottlerPtr Context::getReplicatedSendsThrottler() const
+{
+    auto lock = getLock();
+    if (!shared->replicated_sends_throttler)
+        shared->replicated_sends_throttler = std::make_shared<Throttler>(
+            settings.max_replicated_sends_network_bandwidth_for_server);
+
+    return shared->replicated_sends_throttler;
 }
 
 String Context::resolveDatabase(const String & database_name) const

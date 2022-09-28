@@ -77,7 +77,6 @@ SET(Sources
         "${LIBRARY_DIR}/decompress/zstd_ddict.c"
         "${LIBRARY_DIR}/decompress/zstd_decompress_block.c"
         "${LIBRARY_DIR}/decompress/zstd_decompress.c"
-        "${LIBRARY_DIR}/decompress/huf_decompress_amd64.S"
         "${LIBRARY_DIR}/dictBuilder/cover.c"
         "${LIBRARY_DIR}/dictBuilder/divsufsort.c"
         "${LIBRARY_DIR}/dictBuilder/fastcover.c"
@@ -116,6 +115,7 @@ SET(Headers
         "${LIBRARY_DIR}/decompress/zstd_ddict.h"
         "${LIBRARY_DIR}/decompress/zstd_decompress_block.h"
         "${LIBRARY_DIR}/decompress/zstd_decompress_internal.h"
+        "${LIBRARY_DIR}/decompress/huf_decompress_amd64.S"
         "${LIBRARY_DIR}/dictBuilder/cover.h"
         "${LIBRARY_DIR}/dictBuilder/divsufsort.h"
         "${LIBRARY_DIR}/zdict.h"
@@ -149,7 +149,7 @@ IF (ZSTD_LEGACY_SUPPORT)
             "${LIBRARY_LEGACY_DIR}/zstd_v07.h")
 ENDIF (ZSTD_LEGACY_SUPPORT)
 
-ADD_LIBRARY(zstd ${Sources} ${Headers})
-
-target_include_directories (zstd PUBLIC ${LIBRARY_DIR})
-target_compile_options(zstd PRIVATE -fno-sanitize=undefined)
+add_library(_zstd ${Sources} ${Headers})
+add_library(ch_contrib::zstd ALIAS _zstd)
+target_include_directories(_zstd BEFORE PUBLIC ${LIBRARY_DIR})
+target_compile_options(_zstd PRIVATE -fno-sanitize=undefined)

@@ -2,7 +2,15 @@
 
 #include <sys/types.h>
 
+#include <Common/CurrentMetrics.h>
 #include <IO/WriteBufferFromFileDescriptor.h>
+
+
+namespace CurrentMetrics
+{
+    extern const Metric OpenFileForWrite;
+}
+
 
 #ifndef O_DIRECT
 #define O_DIRECT 00040000
@@ -17,6 +25,7 @@ namespace DB
 class WriteBufferFromFile : public WriteBufferFromFileDescriptor
 {
 protected:
+    CurrentMetrics::Increment metric_increment{CurrentMetrics::OpenFileForWrite};
 
 public:
     WriteBufferFromFile(
@@ -44,6 +53,9 @@ public:
     {
         return file_name;
     }
+
+private:
+    void finalizeImpl() override;
 };
 
 }

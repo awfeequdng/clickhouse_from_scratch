@@ -32,6 +32,8 @@
 
 #include <Common/config_version.h>
 
+#include <thread>
+
 using namespace std::literals;
 
 namespace DB

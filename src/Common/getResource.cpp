@@ -1,17 +1,9 @@
 #include "getResource.h"
-#include "unaligned.h"
 #include <dlfcn.h>
 #include <string>
-#include <algorithm>
+#include <boost/algorithm/string/replace.hpp>
+#include <Common/SymbolIndex.h>
 
-void my_replace_all(std::string &str, std::string r, std::string sub) {
-    size_t pos = 0;
-    pos = str.find(r, pos);
-    while (pos != str.npos) {
-        str.replace(pos, r.size(), sub);
-        pos = str.find(r, pos);
-    }
-}
 
 std::string_view getResource(std::string_view name)
 {
@@ -20,8 +12,13 @@ std::string_view getResource(std::string_view name)
     std::replace(name_replaced.begin(), name_replaced.end(), '/', '_');
     std::replace(name_replaced.begin(), name_replaced.end(), '-', '_');
     std::replace(name_replaced.begin(), name_replaced.end(), '.', '_');
-    my_replace_all(name_replaced, "+", "_PLUS_");
+    boost::replace_all(name_replaced, "+", "_PLUS_");
 
+#if defined USE_MUSL
+    /// If static linking is used, we cannot use dlsym and have to parse ELF symbol table by ourself.
+    return DB::SymbolIndex::instance()->getResource(name_replaced);
+
+#else
     // In most `dlsym(3)` APIs, one passes the symbol name as it appears via
     // something like `nm` or `objdump -t`. For example, a symbol `_foo` would be
     // looked up with the string `"_foo"`.
@@ -42,8 +39,8 @@ std::string_view getResource(std::string_view name)
     std::string symbol_name_start = prefix + name_replaced + "_start";
     std::string symbol_name_end = prefix + name_replaced + "_end";
 
-    const char* sym_start = reinterpret_cast<const char*>(dlsym(RTLD_DEFAULT, symbol_name_start.c_str()));
-    const char* sym_end = reinterpret_cast<const char*>(dlsym(RTLD_DEFAULT, symbol_name_end.c_str()));
+    const char * sym_start = reinterpret_cast<const char *>(dlsym(RTLD_DEFAULT, symbol_name_start.c_str()));
+    const char * sym_end = reinterpret_cast<const char *>(dlsym(RTLD_DEFAULT, symbol_name_end.c_str()));
 
     if (sym_start && sym_end)
     {
@@ -51,4 +48,5 @@ std::string_view getResource(std::string_view name)
         return { sym_start, resource_size };
     }
     return {};
+#endif
 }

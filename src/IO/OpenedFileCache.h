@@ -4,7 +4,15 @@
 #include <mutex>
 
 #include <Core/Types.h>
+#include <Common/ProfileEvents.h>
 #include <IO/OpenedFile.h>
+
+
+namespace ProfileEvents
+{
+    extern const Event OpenedFileCacheHits;
+    extern const Event OpenedFileCacheMisses;
+}
 
 namespace DB
 {
@@ -41,9 +49,11 @@ public:
         {
             if (auto res = it->second.lock())
             {
+                ProfileEvents::increment(ProfileEvents::OpenedFileCacheHits);
                 return res;
             }
         }
+        ProfileEvents::increment(ProfileEvents::OpenedFileCacheMisses);
 
         OpenedFilePtr res
         {

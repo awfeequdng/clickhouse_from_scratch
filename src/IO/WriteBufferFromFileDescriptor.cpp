@@ -1,14 +1,29 @@
 #include <unistd.h>
 #include <errno.h>
 #include <cassert>
-#include <sys/types.h>
 #include <sys/stat.h>
 
 #include <Common/Exception.h>
+#include <Common/ProfileEvents.h>
+#include <Common/CurrentMetrics.h>
+#include <Common/Stopwatch.h>
 
 #include <IO/WriteBufferFromFileDescriptor.h>
 #include <IO/WriteHelpers.h>
 
+
+namespace ProfileEvents
+{
+    extern const Event WriteBufferFromFileDescriptorWrite;
+    extern const Event WriteBufferFromFileDescriptorWriteFailed;
+    extern const Event WriteBufferFromFileDescriptorWriteBytes;
+    extern const Event DiskWriteElapsedMicroseconds;
+}
+
+namespace CurrentMetrics
+{
+    extern const Metric Write;
+}
 
 namespace DB
 {
@@ -28,18 +43,22 @@ void WriteBufferFromFileDescriptor::nextImpl()
     if (!offset())
         return;
 
+    Stopwatch watch;
 
     size_t bytes_written = 0;
     while (bytes_written != offset())
     {
+        ProfileEvents::increment(ProfileEvents::WriteBufferFromFileDescriptorWrite);
 
         ssize_t res = 0;
         {
+            CurrentMetrics::Increment metric_increment{CurrentMetrics::Write};
             res = ::write(fd, working_buffer.begin() + bytes_written, offset() - bytes_written);
         }
 
         if ((-1 == res || 0 == res) && errno != EINTR)
         {
+            ProfileEvents::increment(ProfileEvents::WriteBufferFromFileDescriptorWriteFailed);
 
             /// Don't use getFileName() here because this method can be called from destructor
             String error_file_name = file_name;
@@ -53,6 +72,8 @@ void WriteBufferFromFileDescriptor::nextImpl()
             bytes_written += res;
     }
 
+    ProfileEvents::increment(ProfileEvents::DiskWriteElapsedMicroseconds, watch.elapsedMicroseconds());
+    ProfileEvents::increment(ProfileEvents::WriteBufferFromFileDescriptorWriteBytes, bytes_written);
 }
 
 /// NOTE: This class can be used as a very low-level building block, for example
@@ -73,16 +94,19 @@ WriteBufferFromFileDescriptor::WriteBufferFromFileDescriptor(
 
 WriteBufferFromFileDescriptor::~WriteBufferFromFileDescriptor()
 {
+    finalize();
+}
+
+void WriteBufferFromFileDescriptor::finalizeImpl()
+{
     if (fd < 0)
     {
         assert(!offset() && "attempt to write after close");
         return;
     }
 
-    /// FIXME move final flush into the caller
     next();
 }
-
 
 void WriteBufferFromFileDescriptor::sync()
 {
@@ -90,7 +114,11 @@ void WriteBufferFromFileDescriptor::sync()
     next();
 
     /// Request OS to sync data with storage medium.
-    int res = fsync(fd);
+#if defined(OS_DARWIN)
+    int res = ::fsync(fd);
+#else
+    int res = ::fdatasync(fd);
+#endif
     if (-1 == res)
         throwFromErrnoWithPath("Cannot fsync " + getFileName(), getFileName(), ErrorCodes::CANNOT_FSYNC);
 }

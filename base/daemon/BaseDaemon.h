@@ -55,11 +55,7 @@ public:
     static std::optional<std::reference_wrapper<BaseDaemon>> tryGetInstance() { return tryGetInstance<BaseDaemon>(); }
 
 protected:
-    void waitForTerminationRequest()
-#if POCO_VERSION >= 0x02000000 // in old upstream poco not vitrual
-    override
-#endif
-    ;
+    void waitForTerminationRequest() override;
 
     template <class Daemon>
     static std::optional<std::reference_wrapper<Daemon>> tryGetInstance();

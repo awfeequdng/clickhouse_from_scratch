@@ -1,26 +1,30 @@
 #pragma once
 
-#include <libnuraft/nuraft.hxx>
 #include <IO/WriteBuffer.h>
+#include <libnuraft/nuraft.hxx>
 
-namespace DB {
-class WriteBufferFromNuraftBuffer : public WriteBuffer {
+namespace DB
+{
+
+class WriteBufferFromNuraftBuffer : public WriteBuffer
+{
+public:
+    WriteBufferFromNuraftBuffer();
+
+    nuraft::ptr<nuraft::buffer> getBuffer();
+    bool isFinished() const { return finalized; }
+
+    ~WriteBufferFromNuraftBuffer() override;
+
 private:
-    nuraft::ptr<nuraft::buffer> buffer;
-    bool is_finished = false;
-
-    static constexpr size_t initial_size = 32;
-    static constexpr size_t size_multiplier = 2;
+    void finalizeImpl() override final;
 
     void nextImpl() override;
 
-public:
-    WriteBufferFromNuraftBuffer();
-    void finalize() override final;
-    nuraft::ptr<nuraft::buffer> getBuffer();
-    bool isFinished() const { return is_finished; }
+    nuraft::ptr<nuraft::buffer> buffer;
 
-    ~WriteBufferFromNuraftBuffer() override;
+    static constexpr size_t initial_size = 32;
+    static constexpr size_t size_multiplier = 2;
 };
 
 }
