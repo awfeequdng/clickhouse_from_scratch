@@ -30,7 +30,6 @@ namespace Poco
 
 namespace DB
 {
-
 class IDiskDirectoryIterator;
 using DiskDirectoryIteratorPtr = std::unique_ptr<IDiskDirectoryIterator>;
 

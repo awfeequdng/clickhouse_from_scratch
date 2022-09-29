@@ -37,7 +37,7 @@ struct ContextSharedPart;
 class QueryStatus;
 class Session;
 class IDisk;
-
+class KeeperDispatcher;
 class BackgroundSchedulePool;
 struct BackgroundTaskSchedulingSettings;
 
@@ -379,6 +379,13 @@ public:
 
     void setFileProgressCallback(FileProgressCallback && callback) { file_progress_callback = callback; }
     FileProgressCallback getFileProgressCallback() const { return file_progress_callback; }
+
+#if USE_NURAFT
+    std::shared_ptr<KeeperDispatcher> & getKeeperDispatcher() const;
+#endif
+    void initializeKeeperDispatcher(bool start_async) const;
+    void shutdownKeeperDispatcher() const;
+    void updateKeeperConfiguration(const Poco::Util::AbstractConfiguration & config);
 
 private:
     std::unique_lock<std::recursive_mutex> getLock() const;

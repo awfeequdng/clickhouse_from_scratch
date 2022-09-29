@@ -55,6 +55,7 @@
 [submodule "contrib/NuRaft"]
 	path = contrib/NuRaft
 	url = https://github.com/ClickHouse-Extras/NuRaft.git
+	branch = 1707a7572aa66ec5d0a2dbe2bf5effa3352e6b2d
 [submodule "contrib/abseil-cpp"]
 	path = contrib/abseil-cpp
 	url = https://github.com/abseil/abseil-cpp.git
