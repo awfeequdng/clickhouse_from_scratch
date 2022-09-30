@@ -123,7 +123,7 @@ struct PerfEventValue
 
 static constexpr size_t NUMBER_OF_RAW_EVENTS = 22;
 
-struct PerfDescriptorsHolder
+struct PerfDescriptorsHolder : boost::noncopyable
 {
     int descriptors[NUMBER_OF_RAW_EVENTS]{};
 

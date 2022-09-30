@@ -15,7 +15,7 @@ struct OpenTelemetryTraceContext
 
     // Parse/compose OpenTelemetry traceparent header.
     bool parseTraceparentHeader(const std::string & traceparent, std::string & error);
-    // std::string composeTraceparentHeader() const;
+    std::string composeTraceparentHeader() const;
 };
 
 }

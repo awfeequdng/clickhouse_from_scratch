@@ -206,6 +206,7 @@ std::map<std::string, int> port_name_map = {
     {"tcp_port", 19000},
     {"http_port", 19001},
     {"mysql_port", 19002},
+    {"keeper_server.tcp_port", 19003},
 };
 
 void Server::createServer(const std::string & listen_host, std::string port_name, bool listen_try, CreateServerFunc && func) const
@@ -352,6 +353,9 @@ void Server::defineOptions(Poco::Util::OptionSet & options)
 int Server::main(const std::vector<std::string> & /*args*/)
 {
     Poco::Logger * log = &logger();
+
+    // UseSSL use_ssl;
+
     MainThreadStatus::getInstance();
 
     registerDisks();
@@ -377,7 +381,16 @@ int Server::main(const std::vector<std::string> & /*args*/)
     // Initialize global thread pool. Do it before we fetch configs from zookeeper
     // nodes (`from_zk`), because ZooKeeper interface uses the pool. We will
     // ignore `max_thread_pool_size` in configs we fetch from ZK, but oh well.
-    GlobalThreadPool::initialize(config().getUInt("max_thread_pool_size", 10000));
+    GlobalThreadPool::initialize(
+        config().getUInt("max_thread_pool_size", 10000),
+        config().getUInt("max_thread_pool_free_size", 1000),
+        config().getUInt("thread_pool_queue_size", 10000)
+    );
+
+    Poco::ThreadPool server_pool(3, config().getUInt("max_connections", 1024));
+    std::mutex servers_lock;
+    // std::vector<ProtocolServerAdapter> servers;
+    std::vector<ProtocolServerAdapter> servers_to_start_before_tables;
 
     const auto memory_amount = getMemoryAmount();
 
@@ -473,7 +486,7 @@ int Server::main(const std::vector<std::string> & /*args*/)
 
     Poco::Timespan keep_alive_timeout(10, 0);
 
-    Poco::ThreadPool server_pool(3, /*max_connections*/ 1024);
+    // Poco::ThreadPool server_pool(3, /*max_connections*/ 1024);
 
     // auto servers_to_start_before_tables = std::make_shared<std::vector<ProtocolServerAdapter>>();
 
@@ -591,6 +604,7 @@ int Server::main(const std::vector<std::string> & /*args*/)
             server.stop();
             current_connections += server.currentConnections();
         }
+
 
         if (current_connections)
             std::cout << "Closed all listening sockets. Waiting for {} outstanding connections." << current_connections << std::endl;

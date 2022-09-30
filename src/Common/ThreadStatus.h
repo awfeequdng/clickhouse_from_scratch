@@ -18,9 +18,7 @@
 #include <shared_mutex>
 #include <unordered_set>
 
-#ifdef OS_LINUX
-#include <sys/mman.h>
-#endif
+
 namespace Poco
 {
     class Logger;
@@ -63,6 +61,13 @@ using ThreadStatusPtr = ThreadStatus *;
 class ThreadGroupStatus
 {
 public:
+    struct ProfileEventsCountersAndMemory
+    {
+        ProfileEvents::Counters::Snapshot counters;
+        Int64 memory_usage;
+        UInt64 thread_id;
+    };
+
     mutable std::mutex mutex;
 
     ProfileEvents::Counters performance_counters{VariableContext::Process};
@@ -85,6 +90,10 @@ public:
 
     String query;
     UInt64 normalized_query_hash = 0;
+
+    std::vector<ProfileEventsCountersAndMemory> finished_threads_counters_memory;
+
+    std::vector<ProfileEventsCountersAndMemory> getProfileEventsCountersAndMemoryForThreads();
 };
 
 using ThreadGroupStatusPtr = std::shared_ptr<ThreadGroupStatus>;
@@ -167,7 +176,7 @@ protected:
     std::function<void()> fatal_error_callback;
 
     /// It is used to avoid enabling the query profiler when you have multiple ThreadStatus in the same thread
-    bool query_profiled_enabled = true;
+    bool query_profiler_enabled = true;
 
     /// Requires access to query_id.
     friend class MemoryTrackerThreadSwitcher;
@@ -209,7 +218,8 @@ public:
 
     void disableProfiling()
     {
-        query_profiled_enabled = false;
+        assert(!query_profiler_real && !query_profiler_cpu);
+        query_profiler_enabled = false;
     }
 
     /// Starts new query and create new thread group for it, current thread becomes master thread of the query
