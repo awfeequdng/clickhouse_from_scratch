@@ -71,3 +71,9 @@
 [submodule "contrib/re2"]
 	path = contrib/re2
 	url = https://github.com/google/re2.git
+[submodule "contrib/curl"]
+	path = contrib/curl
+	url = https://github.com/curl/curl.git
+[submodule "contrib/sentry-native"]
+	path = contrib/sentry-native
+	url = https://github.com/ClickHouse-Extras/sentry-native.git

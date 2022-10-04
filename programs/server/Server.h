@@ -24,8 +24,10 @@ namespace Poco
 
 namespace DB
 {
+class AsynchronousMetrics;
+class ProtocolServerAdapter;
 
-class Server :public BaseDaemon, public IServer
+class Server : public BaseDaemon, public IServer
 {
 public:
     using ServerApplication::run;
@@ -47,7 +49,7 @@ public:
 
     bool isCancelled() const override
     {
-        return BaseDaemon::isCancelled();;
+        return BaseDaemon::isCancelled();
     }
 
     void defineOptions(Poco::Util::OptionSet & _options) override;
@@ -61,13 +63,29 @@ protected:
 
     int main(const std::vector<std::string> & args) override;
 
+    std::string getDefaultCorePath() const override;
+
 private:
+    ContextMutablePtr global_context;
     Poco::Net::SocketAddress socketBindListen(Poco::Net::ServerSocket & socket, const std::string & host, UInt16 port, [[maybe_unused]] bool secure = false) const;
 
-    ContextMutablePtr global_context;
+    using CreateServerFunc = std::function<ProtocolServerAdapter(UInt16)>;
+    void createServer(
+        Poco::Util::AbstractConfiguration & config,
+        const std::string & listen_host,
+        const char * port_name,
+        bool listen_try,
+        bool start_server,
+        std::vector<ProtocolServerAdapter> & servers,
+        CreateServerFunc && func) const;
 
-    using CreateServerFunc = std::function<void(UInt16)>;
-    void createServer(const std::string & listen_host, std::string port_name, bool listen_try, CreateServerFunc && func) const;
+    void createServers(
+        Poco::Util::AbstractConfiguration & config,
+        const std::vector<std::string> & listen_hosts,
+        bool listen_try,
+        Poco::ThreadPool & server_pool,
+        std::vector<ProtocolServerAdapter> & servers,
+        bool start_servers = false);
 };
 
-} // namespace DB
+}

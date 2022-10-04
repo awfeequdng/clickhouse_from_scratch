@@ -31,6 +31,7 @@
 #include "Interpreters/ClientInfo.h"
 
 #include <Common/config_version.h>
+#include <Server/TCPServer.h>
 
 #include <thread>
 
@@ -52,9 +53,10 @@ namespace ErrorCodes
     extern const int UNKNOWN_PROTOCOL;
 }
 
-TCPHandler::TCPHandler(IServer & server_, const Poco::Net::StreamSocket & socket_, std::string server_display_name_)
+TCPHandler::TCPHandler(IServer & server_, TCPServer & tcp_server_, const Poco::Net::StreamSocket & socket_, std::string server_display_name_)
     : Poco::Net::TCPServerConnection(socket_)
     , server(server_)
+    , tcp_server(tcp_server_)
     , log(&Poco::Logger::get("TCPHandler"))
     , server_display_name(std::move(server_display_name_))
 {
@@ -236,14 +238,14 @@ void TCPHandler::runImpl()
         throw;
     }
 
-    while (true)
+    while (tcp_server.isOpen())
     {
         /// We are waiting for a packet from the client. Thus, every `poll_interval` seconds check whether we need to shut down.
         {
             std::cout << "main loop 1" << std::endl;
             Stopwatch idle_time;
             UInt64 timeout_ms = std::min(poll_interval, idle_connection_timeout) * 1000000;
-            while (!server.isCancelled() && !static_cast<ReadBufferFromPocoSocket &>(*in).poll(timeout_ms))
+            while (tcp_server.isOpen() && !server.isCancelled() && !static_cast<ReadBufferFromPocoSocket &>(*in).poll(timeout_ms))
             {
                 std::cout << "main loop 2" << std::endl;
                 if (idle_time.elapsedSeconds() > idle_connection_timeout)
@@ -257,16 +259,10 @@ void TCPHandler::runImpl()
         std::cout << "main loop 4" << std::endl;
 
         /// If we need to shut down, or client disconnects.
-        if (server.isCancelled() ) {
-            std::cout << "server.isCancelled: " << server.isCancelled() << std::endl;
+        if (!tcp_server.isOpen() || server.isCancelled() || in->eof()) {
+            std::cout << "!tcp_server.isOpen or server.isCancelled  or in->eof" << std::endl;
             break;
         }
-        std::cout << "main loop 4 -1" << std::endl;
-        if (in->eof()) {
-            std::cout << "in->eof(): " << in->eof() << std::endl;
-            break;
-        }
-
 
         std::cout << "main loop 5" << std::endl;
         Stopwatch watch;

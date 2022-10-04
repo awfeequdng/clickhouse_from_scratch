@@ -39,7 +39,8 @@ set_property(DIRECTORY PROPERTY EXCLUDE_FROM_ALL 1)
 # include_directories(${PROJECT_SOURCE_DIR}/contrib/xz/src/liblzma/api)
 include_directories(${PROJECT_SOURCE_DIR}/contrib/poco/Foundation/include)
 
-
+# add_contrib (curl-cmake curl)  # 编译不同过，暂时不需要了
+# add_contrib (sentry-native-cmake sentry-native) # requires: curl
 add_contrib (re2-cmake re2)
 add_contrib (boost-cmake boost)
 add_contrib (brotli-cmake brotli)
