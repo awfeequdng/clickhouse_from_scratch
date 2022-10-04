@@ -220,6 +220,7 @@ target_link_libraries(cfs
   ch_contrib::abseil_swiss_tables
   ch_contrib::re2
   ch_contrib::re2_st
+  rt    # need by shm_open, shm_unlink
 )
 
 if (USE_BZIP2)
