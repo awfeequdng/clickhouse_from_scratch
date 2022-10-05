@@ -68,6 +68,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}/src/Core/include)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/src/Formats)
 
+include (cmake/arch.cmake)
 include (cmake/target.cmake)
 include (cmake/llvm.cmake)
 include (cmake/find/nuraft.cmake)
@@ -118,16 +119,8 @@ function(add_cfs_dep_singlefile NAME FILE_URL)
 endfunction()
 
 # add_cfs_dep(utf8proc https://github.com/JuliaStrings/utf8proc.git v2.6.1)
-# add_cfs_dep(fmt https://github.com/fmtlib/fmt.git 9.0.0)
-# add_cfs_dep(gtest https://github.com/google/googletest.git release-1.10.0)
 
-# add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/poco)
-# link_directories(${CMAKE_CURRENT_BINARY_DIR}/lib)
-# link_directories(poco_build/lib)
-
-#add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/gtest)
-
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/fmt)
+# add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/fmt)
 set(CMAKE_CXX_STANDARD 20)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/cityhash102)
@@ -144,7 +137,12 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/magic_enum)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib/fast_float)
 
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib)
+# add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contrib)
+add_subdirectory (contrib EXCLUDE_FROM_ALL)
+
+if (NOT ENABLE_JEMALLOC)
+    message (WARNING "Non default allocator is disabled. This is not recommended for production builds.")
+endif ()
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/base/readpassphrase)
 
@@ -196,7 +194,7 @@ target_link_libraries(cfs
   Poco::Net
   Poco::Foundation
   Poco::Util
-  fmt
+#   fmt
   replxx
   readline
   double-conversion
@@ -221,6 +219,8 @@ target_link_libraries(cfs
   ch_contrib::re2
   ch_contrib::re2_st
   rt    # need by shm_open, shm_unlink
+  ch_contrib::jemalloc
+  ch_contrib::fmt
 )
 
 if (USE_BZIP2)
@@ -241,6 +241,8 @@ target_link_libraries(clickhouse
   PUBLIC
   cfs
 )
+
+include (configure_config.cmake)
 
 SET(PX_TEST_PARALLELISM 1)
 SET(UNITTEST_OUTPUT_ON_FAILURE ON)

@@ -77,3 +77,9 @@
 [submodule "contrib/sentry-native"]
 	path = contrib/sentry-native
 	url = https://github.com/ClickHouse-Extras/sentry-native.git
+[submodule "contrib/jemalloc"]
+	path = contrib/jemalloc
+	url = https://github.com/ClickHouse-Extras/jemalloc.git
+[submodule "contrib/fmtlib"]
+	path = contrib/fmtlib
+	url = https://github.com/fmtlib/fmt.git
