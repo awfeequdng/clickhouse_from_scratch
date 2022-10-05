@@ -234,6 +234,7 @@ add_executable(clickhouse
   programs/server/Server.cpp
   programs/client/Client.cpp
   programs/client/TestTags.cpp
+  programs/keeper/Keeper.cpp
 )
 
 target_link_libraries(clickhouse

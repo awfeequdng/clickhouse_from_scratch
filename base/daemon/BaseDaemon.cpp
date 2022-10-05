@@ -49,7 +49,7 @@
 #include <Common/StackTrace.h>
 #include <Common/getMultipleKeysFromConfig.h>
 #include <Common/ClickHouseRevision.h>
-// #include <Common/Config/ConfigProcessor.h>
+#include <Common/Config/ConfigProcessor.h>
 #include <Common/SymbolIndex.h>
 #include <Common/getExecutablePath.h>
 #include <Common/getHashOfLoadedBinary.h>
@@ -479,16 +479,15 @@ void BaseDaemon::reloadConfiguration()
       *  instead of using files specified in config.xml.
       * (It's convenient to log in console when you start server without any command line parameters.)
       */
-    std::cout << "not implemented yet. BaseDaemon::reloadConfiguration" << std::endl;
-    // config_path = config().getString("config-file", getDefaultConfigFileName());
-    // DB::ConfigProcessor config_processor(config_path, false, true);
-    // config_processor.setConfigPath(fs::path(config_path).parent_path());
-    // loaded_config = config_processor.loadConfig(/* allow_zk_includes = */ true);
+    config_path = config().getString("config-file", getDefaultConfigFileName());
+    DB::ConfigProcessor config_processor(config_path, false, true);
+    config_processor.setConfigPath(fs::path(config_path).parent_path());
+    loaded_config = config_processor.loadConfig(/* allow_zk_includes = */ true);
 
-    // if (last_configuration != nullptr)
-    //     config().removeConfiguration(last_configuration);
-    // last_configuration = loaded_config.configuration.duplicate();
-    // config().add(last_configuration, PRIO_DEFAULT, false);
+    if (last_configuration != nullptr)
+        config().removeConfiguration(last_configuration);
+    last_configuration = loaded_config.configuration.duplicate();
+    config().add(last_configuration, PRIO_DEFAULT, false);
 }
 
 

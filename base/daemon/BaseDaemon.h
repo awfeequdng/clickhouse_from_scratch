@@ -20,7 +20,7 @@
 #include <base/logger_useful.h>
 #include <base/getThreadId.h>
 #include <daemon/GraphiteWriter.h>
-// #include <Common/Config/ConfigProcessor.h>
+#include <Common/Config/ConfigProcessor.h>
 #include <Common/StatusFile.h>
 #include <loggers/Loggers.h>
 
@@ -169,7 +169,7 @@ protected:
     std::atomic_size_t sigint_signals_counter{0};
 
     std::string config_path;
-    // DB::ConfigProcessor::LoadedConfig loaded_config;
+    DB::ConfigProcessor::LoadedConfig loaded_config;
     Poco::Util::AbstractConfiguration * last_configuration = nullptr;
 
     String build_id_info;

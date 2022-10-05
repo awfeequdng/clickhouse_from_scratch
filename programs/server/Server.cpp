@@ -357,23 +357,24 @@ void Server::createServer(
     CreateServerFunc && func) const
 {
     /// For testing purposes, user may omit tcp_port or http_port or https_port in configuration file.
-    // if (config.getString(port_name, "").empty())
-    //     return;
-    static std::map<std::string, int>port_name_map = {
-        {"tcp_port", 19000},
-    };
-    if (port_name_map.find(port_name) == port_name_map.end()) {
-        std::cout << "not register port name: " << port_name << std::endl;
+    if (config.getString(port_name, "").empty())
         return;
-    }
+    // static std::map<std::string, int>port_name_map = {
+    //     {"tcp_port", 19000},
+    //     {"keeper_server.tcp_port", 19001},
+    // };
+    // if (port_name_map.find(port_name) == port_name_map.end()) {
+    //     std::cout << "not register port name: " << port_name << std::endl;
+    //     return;
+    // }
 
     /// If we already have an active server for this listen_host/port_name, don't create it again
     for (const auto & server : servers)
         if (!server.isStopping() && server.getListenHost() == listen_host && server.getPortName() == port_name)
             return;
 
-    // auto port = config.getInt(port_name);
-    auto port = port_name_map[port_name];
+    auto port = config.getInt(port_name);
+    // auto port = port_name_map[port_name];
     try
     {
         servers.push_back(func(port));
