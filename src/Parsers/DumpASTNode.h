@@ -101,9 +101,8 @@ public:
 
     ~DebugASTLog()
     {
-        std::cout << "not implemented yet. ~DebugASTLog()" << std::endl;
-        // if constexpr (_enable)
-        //     LOG_DEBUG(log, buf.str());
+        if constexpr (_enable)
+            LOG_DEBUG(log, fmt::runtime(buf.str()));
     }
 
     WriteBuffer * stream() { return (_enable ? &buf : nullptr); }

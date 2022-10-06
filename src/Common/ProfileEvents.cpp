@@ -355,8 +355,7 @@ Event end() { return END; }
 
 void increment(Event event, Count amount)
 {
-    std::cout << "DB::CurrentThread::getProfileEvents().increment(event, amount) not implemented yet." << std::endl;
-    // DB::CurrentThread::getProfileEvents().increment(event, amount);
+    DB::CurrentThread::getProfileEvents().increment(event, amount);
 }
 
 }

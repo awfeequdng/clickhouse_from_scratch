@@ -404,9 +404,7 @@ bool Connection::ping()
     }
     catch (const Poco::Exception & e)
     {
-
-        std::cout << "log_wrapper.get() <<" ":(not implemented) " << e.displayText() << std::endl;
-        // LOG_TRACE(log_wrapper.get(), e.displayText());
+        LOG_TRACE(log_wrapper.get(), fmt::runtime(e.displayText()));
         return false;
     }
 
