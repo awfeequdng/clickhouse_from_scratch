@@ -411,6 +411,7 @@ static ASTPtr executeQueryImpl(
     {
         ParserQuery parser(end);
         /// TODO: parser should fail early when max_query_size limit is reached.
+        std::cout << "before parseQuery: " << begin << std::endl;
         ast = parseQuery(parser, begin, end, "", max_query_size, settings.max_parser_depth);
     }
     catch (...)

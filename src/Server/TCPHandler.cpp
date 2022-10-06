@@ -32,6 +32,7 @@
 
 #include <Common/config_version.h>
 #include <Server/TCPServer.h>
+#include <Interpreters/executeQuery.h>
 
 #include <thread>
 
@@ -309,6 +310,12 @@ void TCPHandler::runImpl()
             /// NOTE: these settings are applied only for current connection (not for distributed tables' connections)
             // state.timeout_setter = std::make_unique<TimeoutSetter>(socket(), receive_timeout, send_timeout);
             std::cout << "main loop 10" << std::endl;
+
+
+                        /// Processing Query
+            auto res = executeQuery(state.query, query_context, false, state.stage);
+
+            std::cout << "executeQuery result: " << res << std::endl;
 
 
             if (state.is_connection_closed)

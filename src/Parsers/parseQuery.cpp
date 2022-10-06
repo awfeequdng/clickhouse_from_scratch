@@ -1,8 +1,8 @@
 #include <Parsers/parseQuery.h>
 
-// #include <Interpreters/OpenTelemetrySpanLog.h>
+#include <Interpreters/OpenTelemetrySpanLog.h>
 #include <Parsers/ParserQuery.h>
-// #include <Parsers/ASTInsertQuery.h>
+#include <Parsers/ASTInsertQuery.h>
 #include <Parsers/Lexer.h>
 #include <Parsers/TokenIterator.h>
 #include <Common/StringUtils/StringUtils.h>
@@ -280,9 +280,12 @@ ASTPtr tryParseQuery(
 
     if (!parse_res)
     {
+        std::cout << "Generic parse error." << std::endl;
         /// Generic parse error.
         out_error_message = getSyntaxErrorMessage(query_begin, all_queries_end,
             last_token, expected, hilite, query_description);
+
+        std::cout << "Generic parse error. over" << std::endl;
         return nullptr;
     }
 
