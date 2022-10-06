@@ -221,6 +221,7 @@ target_link_libraries(cfs
   rt    # need by shm_open, shm_unlink
   ch_contrib::jemalloc
   ch_contrib::fmt
+  ch_contrib::yaml_cpp
 )
 
 if (USE_BZIP2)

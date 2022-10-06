@@ -83,3 +83,6 @@
 [submodule "contrib/fmtlib"]
 	path = contrib/fmtlib
 	url = https://github.com/fmtlib/fmt.git
+[submodule "contrib/yaml-cpp"]
+	path = contrib/yaml-cpp
+	url = https://github.com/ClickHouse-Extras/yaml-cpp.git
