@@ -1,9 +1,10 @@
 #include <Interpreters/StorageID.h>
 #include <Parsers/ASTQueryWithTableAndOutput.h>
-// #include <Parsers/ASTIdentifier.h>
+#include <Parsers/ASTIdentifier.h>
 #include <Common/quoteString.h>
 #include <IO/WriteHelpers.h>
 #include <IO/ReadHelpers.h>
+#include <Interpreters/DatabaseAndTableWithAlias.h>
 #include <Poco/Util/AbstractConfiguration.h>
 
 namespace DB
@@ -17,10 +18,29 @@ namespace ErrorCodes
 
 StorageID::StorageID(const ASTQueryWithTableAndOutput & query)
 {
-    database_name = query.database;
-    table_name = query.table;
+    database_name = query.getDatabase();
+    table_name = query.getTable();
     uuid = query.uuid;
     assertNotEmpty();
+}
+
+StorageID::StorageID(const ASTTableIdentifier & table_identifier_node)
+{
+    DatabaseAndTableWithAlias database_table(table_identifier_node);
+    database_name = database_table.database;
+    table_name = database_table.table;
+    uuid = database_table.uuid;
+    assertNotEmpty();
+}
+
+StorageID::StorageID(const ASTPtr & node)
+{
+    if (const auto * identifier = node->as<ASTTableIdentifier>())
+        *this = StorageID(*identifier);
+    else if (const auto * simple_query = dynamic_cast<const ASTQueryWithTableAndOutput *>(node.get()))
+        *this = StorageID(*simple_query);
+    else
+        throw Exception("Unexpected AST", ErrorCodes::LOGICAL_ERROR);
 }
 
 String StorageID::getTableName() const

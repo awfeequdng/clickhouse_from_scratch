@@ -2,6 +2,7 @@
 
 #include <IO/WriteHelpers.h>
 #include <Interpreters/IdentifierSemantic.h>
+#include <Interpreters/StorageID.h>
 #include <Parsers/queryToString.h>
 #include <IO/Operators.h>
 
@@ -139,11 +140,113 @@ void ASTIdentifier::appendColumnNameImpl(WriteBuffer & ostr) const
     writeString(name(), ostr);
 }
 
+void ASTIdentifier::restoreTable()
+{
+    if (!compound())
+    {
+        name_parts.insert(name_parts.begin(), semantic->table);
+        resetFullName();
+    }
+}
+
+std::shared_ptr<ASTTableIdentifier> ASTIdentifier::createTable() const
+{
+    if (name_parts.size() == 1) return std::make_shared<ASTTableIdentifier>(name_parts[0]);
+    if (name_parts.size() == 2) return std::make_shared<ASTTableIdentifier>(name_parts[0], name_parts[1]);
+    return nullptr;
+}
+
 void ASTIdentifier::resetFullName()
 {
     full_name = name_parts[0];
     for (size_t i = 1; i < name_parts.size(); ++i)
         full_name += '.' + name_parts[i];
+}
+
+ASTTableIdentifier::ASTTableIdentifier(const String & table_name, std::vector<ASTPtr> && name_params)
+    : ASTIdentifier({table_name}, true, std::move(name_params))
+{
+}
+
+ASTTableIdentifier::ASTTableIdentifier(const StorageID & table_id, std::vector<ASTPtr> && name_params)
+    : ASTIdentifier(
+        table_id.database_name.empty() ? std::vector<String>{table_id.table_name}
+                                       : std::vector<String>{table_id.database_name, table_id.table_name},
+        true, std::move(name_params))
+{
+    uuid = table_id.uuid;
+}
+
+ASTTableIdentifier::ASTTableIdentifier(const String & database_name, const String & table_name, std::vector<ASTPtr> && name_params)
+    : ASTIdentifier({database_name, table_name}, true, std::move(name_params))
+{
+}
+
+ASTPtr ASTTableIdentifier::clone() const
+{
+    auto ret = std::make_shared<ASTTableIdentifier>(*this);
+    ret->semantic = std::make_shared<IdentifierSemanticImpl>(*ret->semantic);
+    return ret;
+}
+
+StorageID ASTTableIdentifier::getTableId() const
+{
+    if (name_parts.size() == 2) return {name_parts[0], name_parts[1], uuid};
+    else return {{}, name_parts[0], uuid};
+}
+
+String ASTTableIdentifier::getDatabaseName() const
+{
+    if (name_parts.size() == 2) return name_parts[0];
+    else return {};
+}
+
+ASTPtr ASTTableIdentifier::getTable() const
+{
+    if (name_parts.size() == 2)
+    {
+        if (!name_parts[1].empty())
+            return std::make_shared<ASTIdentifier>(name_parts[1]);
+
+        if (name_parts[0].empty())
+            return std::make_shared<ASTIdentifier>("", children[1]->clone());
+        else
+            return std::make_shared<ASTIdentifier>("", children[0]->clone());
+    }
+    else if (name_parts.size() == 1)
+    {
+        if (name_parts[0].empty())
+            return std::make_shared<ASTIdentifier>("", children[0]->clone());
+        else
+            return std::make_shared<ASTIdentifier>(name_parts[0]);
+    }
+    else return {};
+}
+
+ASTPtr ASTTableIdentifier::getDatabase() const
+{
+    if (name_parts.size() == 2)
+    {
+        if (name_parts[0].empty())
+            return std::make_shared<ASTIdentifier>("", children[0]->clone());
+        else
+            return std::make_shared<ASTIdentifier>(name_parts[0]);
+    }
+    else return {};
+}
+
+void ASTTableIdentifier::resetTable(const String & database_name, const String & table_name)
+{
+    auto identifier = std::make_shared<ASTTableIdentifier>(database_name, table_name);
+    full_name.swap(identifier->full_name);
+    name_parts.swap(identifier->name_parts);
+    uuid = identifier->uuid;
+}
+
+void ASTTableIdentifier::updateTreeHashImpl(SipHash & hash_state) const
+{
+    hash_state.update(uuid);
+    IAST::updateTreeHashImpl(hash_state);
 }
 
 String getIdentifierName(const IAST * ast)

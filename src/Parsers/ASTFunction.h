@@ -1,14 +1,14 @@
 #pragma once
 
-#include <Parsers/ASTWithAlias.h>
 #include <Parsers/ASTExpressionList.h>
-// #include <Parsers/ASTSelectWithUnionQuery.h>
+#include <Parsers/ASTIdentifier_fwd.h>
+#include <Parsers/ASTWithAlias.h>
 
 
 namespace DB
 {
 
-class ASTIdentifier;
+class ASTSelectWithUnionQuery;
 
 /** AST for function application or operator.
   */
@@ -45,12 +45,14 @@ public:
 
     void updateTreeHashImpl(SipHash & hash_state) const override;
 
+    ASTSelectWithUnionQuery * tryGetQueryArgument() const;
+
     ASTPtr toLiteral() const;  // Try to convert functions like Array or Tuple to a literal form.
 
     std::string getWindowDescription() const;
 
 protected:
-    void formatImplWithoutAlias(const FormatSettings & settings, FormatState & state, FormatStateStacked frame) const override {}
+    void formatImplWithoutAlias(const FormatSettings & settings, FormatState & state, FormatStateStacked frame) const override;
     void appendColumnNameImpl(WriteBuffer & ostr) const override;
 };
 

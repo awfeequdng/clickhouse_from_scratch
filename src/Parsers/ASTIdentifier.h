@@ -1,10 +1,9 @@
 #pragma once
 
 #include <Core/UUID.h>
+#include <Parsers/ASTIdentifier_fwd.h>
 #include <Parsers/ASTQueryParameter.h>
 #include <Parsers/ASTWithAlias.h>
-
-#include <optional>
 
 
 namespace DB
@@ -12,7 +11,9 @@ namespace DB
 
 struct IdentifierSemantic;
 struct IdentifierSemanticImpl;
+struct StorageID;
 
+class ASTTableIdentifier;
 
 /// FIXME: rewrite code about params - they should be substituted at the parsing stage,
 ///        or parsed as a separate AST entity.
@@ -45,6 +46,8 @@ public:
     const String & shortName() const { return name_parts.back(); }
     const String & name() const;
 
+    void restoreTable();  // TODO(ilezhankin): get rid of this
+    std::shared_ptr<ASTTableIdentifier> createTable() const;  // returns |nullptr| if identifier is not table.
 
 protected:
     String full_name;
@@ -57,24 +60,36 @@ protected:
 private:
     using ASTWithAlias::children; /// ASTIdentifier is child free
 
+    friend class ASTTableIdentifier;
+    friend class ReplaceQueryParameterVisitor;
     friend struct IdentifierSemantic;
     friend void setIdentifierSpecial(ASTPtr & ast);
 
     void resetFullName();
 };
 
+class ASTTableIdentifier : public ASTIdentifier
+{
+public:
+    explicit ASTTableIdentifier(const String & table_name, std::vector<ASTPtr> && name_params = {});
+    explicit ASTTableIdentifier(const StorageID & table_id, std::vector<ASTPtr> && name_params = {});
+    ASTTableIdentifier(const String & database_name, const String & table_name, std::vector<ASTPtr> && name_params = {});
 
-/// ASTIdentifier Helpers: hide casts and semantic.
+    String getID(char delim) const override { return "TableIdentifier" + (delim + name()); }
+    ASTPtr clone() const override;
 
-void setIdentifierSpecial(ASTPtr & ast);
+    UUID uuid = UUIDHelpers::Nil;  // FIXME(ilezhankin): make private
 
-String getIdentifierName(const IAST * ast);
-std::optional<String> tryGetIdentifierName(const IAST * ast);
-bool tryGetIdentifierNameInto(const IAST * ast, String & name);
+    StorageID getTableId() const;
+    String getDatabaseName() const;
 
-inline String getIdentifierName(const ASTPtr & ast) { return getIdentifierName(ast.get()); }
-inline std::optional<String> tryGetIdentifierName(const ASTPtr & ast) { return tryGetIdentifierName(ast.get()); }
-inline bool tryGetIdentifierNameInto(const ASTPtr & ast, String & name) { return tryGetIdentifierNameInto(ast.get(), name); }
+    ASTPtr getTable() const;
+    ASTPtr getDatabase() const;
 
+    // FIXME: used only when it's needed to rewrite distributed table name to real remote table name.
+    void resetTable(const String & database_name, const String & table_name);  // TODO(ilezhankin): get rid of this
+
+    void updateTreeHashImpl(SipHash & hash_state) const override;
+};
 
 }

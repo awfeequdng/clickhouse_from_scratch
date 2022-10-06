@@ -8,7 +8,7 @@
 #include <Parsers/IAST.h>
 #include <Parsers/ASTLiteral.h>
 #include <Parsers/ASTFunction.h>
-#include <Parsers/ASTIdentifier.h>
+#include <Parsers/ASTIdentifier_fwd.h>
 #include <IO/WriteBuffer.h>
 #include <IO/WriteHelpers.h>
 #include <IO/BufferWithOwnMemory.h>
