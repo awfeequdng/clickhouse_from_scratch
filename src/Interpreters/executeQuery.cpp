@@ -2,7 +2,7 @@
 #include <Common/PODArray.h>
 #include <Common/typeid_cast.h>
 #include <Common/ThreadProfileEvents.h>
-
+#include <Parsers/DumpASTNode.h>
 // #include <Interpreters/AsynchronousInsertQueue.h>
 #include <IO/WriteBufferFromFile.h>
 #include <IO/WriteBufferFromVector.h>
@@ -411,7 +411,6 @@ static ASTPtr executeQueryImpl(
     {
         ParserQuery parser(end);
         /// TODO: parser should fail early when max_query_size limit is reached.
-        std::cout << "before parseQuery: " << begin << std::endl;
         ast = parseQuery(parser, begin, end, "", max_query_size, settings.max_parser_depth);
     }
     catch (...)
@@ -451,6 +450,9 @@ bool executeQuery(
     // std::tie(ast, streams) = executeQueryImpl(query.data(), query.data() + query.size(), context, internal, stage, nullptr);
     ast = executeQueryImpl(query.data(), query.data() + query.size(), context, internal, stage, nullptr);
 
+    WriteBufferFromOwnString buf;
+    dumpAST(*ast, buf);
+    std::cout << buf.str() << std::endl;
     // if (const auto * ast_query_with_output = dynamic_cast<const ASTQueryWithOutput *>(ast.get()))
     // {
     //     String format_name = ast_query_with_output->format

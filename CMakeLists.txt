@@ -194,6 +194,7 @@ target_link_libraries(cfs
   Poco::Net
   Poco::Foundation
   Poco::Util
+  Poco::Net::SSL
 #   fmt
   replxx
   readline
@@ -222,6 +223,7 @@ target_link_libraries(cfs
   ch_contrib::jemalloc
   ch_contrib::fmt
   ch_contrib::yaml_cpp
+  ch_contrib::sentry
 )
 
 if (USE_BZIP2)
