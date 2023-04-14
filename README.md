@@ -1,1 +1,5 @@
 # clickhouse_from_scratch
+这个库从零开始实现clickhouse
+当前只实现了clickhouse基础库、sql语法解析成AST的部分。
+当然，我们可以从clickhouse的基础库中借鉴很多高性能的设计，从sql解析过程分析sql是如何一步步不解析成AST的。
+后面我们有功夫的话把执行引擎添加进行。
